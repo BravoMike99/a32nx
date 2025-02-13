@@ -60,10 +60,6 @@ export interface MfdDisplayInterface {
   interactionMode: Subscribable<InteractionMode>;
 
   openMessageList(): void;
-
-  get positionMonitorFix(): Fix | null;
-
-  set positionMonitorFix(fix: Fix | null);
 }
 
 export class MfdComponent
