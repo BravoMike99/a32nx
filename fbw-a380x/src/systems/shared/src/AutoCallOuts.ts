@@ -1,8 +1,8 @@
-// Copyright (c) 2023-2024 FlyByWire Simulations
+// Copyright (c) 2023-2026 FlyByWire Simulations
 // SPDX-License-Identifier: GPL-3.0
 
 /** Bit flags for the radio auto call outs (for CONFIG_A380X_FWC_RADIO_AUTO_CALL_OUT_PINS). */
-export enum A380XRadioAutoCallOutFlags {
+export enum A380XAutoCallOutFlags {
   TwoThousandFiveHundred = 1 << 0,
   TwentyFiveHundred = 1 << 1,
   TwoThousand = 1 << 2,
@@ -24,16 +24,19 @@ export enum A380XRadioAutoCallOutFlags {
   Twenty = 1 << 17,
   Ten = 1 << 18,
   Five = 1 << 19,
+
+  // Unused for now
+  PlusHundred = 1 << 20,
 }
 
 /** The default (Airbus basic configuration) radio altitude auto call outs. */
-export const A380X_DEFAULT_RADIO_AUTO_CALL_OUTS =
-  A380XRadioAutoCallOutFlags.TwoThousandFiveHundred |
-  A380XRadioAutoCallOutFlags.OneThousand |
-  A380XRadioAutoCallOutFlags.FourHundred |
-  A380XRadioAutoCallOutFlags.Fifty |
-  A380XRadioAutoCallOutFlags.Forty |
-  A380XRadioAutoCallOutFlags.Thirty |
-  A380XRadioAutoCallOutFlags.Twenty |
-  A380XRadioAutoCallOutFlags.Ten |
-  A380XRadioAutoCallOutFlags.Five;
+export const A380X_DEFAULT_AUTO_CALL_OUTS =
+  A380XAutoCallOutFlags.TwoThousandFiveHundred |
+  A380XAutoCallOutFlags.OneThousand |
+  A380XAutoCallOutFlags.FourHundred |
+  A380XAutoCallOutFlags.Fifty |
+  A380XAutoCallOutFlags.Forty |
+  A380XAutoCallOutFlags.Thirty |
+  A380XAutoCallOutFlags.Twenty |
+  A380XAutoCallOutFlags.Ten |
+  A380XAutoCallOutFlags.Five;

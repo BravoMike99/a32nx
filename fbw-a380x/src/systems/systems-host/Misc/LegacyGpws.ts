@@ -2,7 +2,7 @@
 import { Arinc429SignStatusMatrix, Arinc429Word, NXDataStore, UpdateThrottler } from '@flybywiresim/fbw-sdk';
 import { FmgcFlightPhase } from '@shared/flightphase';
 import { LegacySoundManager, soundList } from './LegacySoundManager';
-import { A380X_DEFAULT_RADIO_AUTO_CALL_OUTS, A380XRadioAutoCallOutFlags } from '../../shared/src/AutoCallOuts';
+import { A380X_DEFAULT_AUTO_CALL_OUTS, A380XAutoCallOutFlags } from '../../shared/src/AutoCallOuts';
 import { EventBus, SimVarValueType } from '@microsoft/msfs-sdk';
 import { FwsSoundManagerControlEvents } from '../CpiomC/FlightWarningSystem/FwsSoundManager';
 
@@ -58,7 +58,7 @@ export class LegacyGpws {
     private bus: EventBus,
     private soundManager: LegacySoundManager,
   ) {
-    this.autoCallOutPins = A380X_DEFAULT_RADIO_AUTO_CALL_OUTS;
+    this.autoCallOutPins = A380X_DEFAULT_AUTO_CALL_OUTS;
 
     this.minimumsState = 0;
 
@@ -211,7 +211,7 @@ export class LegacyGpws {
     NXDataStore.getAndSubscribeLegacy(
       'CONFIG_A380X_FWC_RADIO_AUTO_CALL_OUT_PINS',
       (k, v) => k === 'CONFIG_A380X_FWC_RADIO_AUTO_CALL_OUT_PINS' && (this.autoCallOutPins = Number(v)),
-      A380X_DEFAULT_RADIO_AUTO_CALL_OUTS.toString(),
+      A380X_DEFAULT_AUTO_CALL_OUTS.toString(),
     );
   }
 
@@ -590,7 +590,7 @@ export class LegacyGpws {
         if (radioAlt > 12) {
           this.AltCallState.action('up');
         } else if (radioAlt <= 6) {
-          if (this.RetardState.value !== 'retardPlaying' && this.autoCallOutPins & A380XRadioAutoCallOutFlags.Five) {
+          if (this.RetardState.value !== 'retardPlaying' && this.autoCallOutPins & A380XAutoCallOutFlags.Five) {
             this.pub.pub('enqueueSound', 'alt_5');
           }
           this.AltCallState.action('down');
@@ -600,7 +600,7 @@ export class LegacyGpws {
         if (radioAlt > 22) {
           this.AltCallState.action('up');
         } else if (radioAlt <= 12) {
-          if (this.RetardState.value !== 'retardPlaying' && this.autoCallOutPins & A380XRadioAutoCallOutFlags.Ten) {
+          if (this.RetardState.value !== 'retardPlaying' && this.autoCallOutPins & A380XAutoCallOutFlags.Ten) {
             this.pub.pub('enqueueSound', 'alt_10');
           }
           this.AltCallState.action('down');
@@ -610,7 +610,7 @@ export class LegacyGpws {
         if (radioAlt > 32) {
           this.AltCallState.action('up');
         } else if (radioAlt <= 22) {
-          if (this.autoCallOutPins & A380XRadioAutoCallOutFlags.Twenty) {
+          if (this.autoCallOutPins & A380XAutoCallOutFlags.Twenty) {
             this.pub.pub('enqueueSound', 'alt_20');
           }
           this.AltCallState.action('down');
@@ -620,7 +620,7 @@ export class LegacyGpws {
         if (radioAlt > 42) {
           this.AltCallState.action('up');
         } else if (radioAlt <= 32) {
-          if (this.autoCallOutPins & A380XRadioAutoCallOutFlags.Thirty) {
+          if (this.autoCallOutPins & A380XAutoCallOutFlags.Thirty) {
             this.pub.pub('enqueueSound', 'alt_30');
           }
           this.AltCallState.action('down');
@@ -630,7 +630,7 @@ export class LegacyGpws {
         if (radioAlt > 53) {
           this.AltCallState.action('up');
         } else if (radioAlt <= 42) {
-          if (this.autoCallOutPins & A380XRadioAutoCallOutFlags.Forty) {
+          if (this.autoCallOutPins & A380XAutoCallOutFlags.Forty) {
             this.pub.pub('enqueueSound', 'alt_40');
           }
           this.AltCallState.action('down');
@@ -640,7 +640,7 @@ export class LegacyGpws {
         if (radioAlt > 65) {
           this.AltCallState.action('up');
         } else if (radioAlt <= 53) {
-          if (this.autoCallOutPins & A380XRadioAutoCallOutFlags.Fifty) {
+          if (this.autoCallOutPins & A380XAutoCallOutFlags.Fifty) {
             this.pub.pub('enqueueSound', 'alt_50');
           }
           this.AltCallState.action('down');
@@ -650,7 +650,7 @@ export class LegacyGpws {
         if (radioAlt > 75) {
           this.AltCallState.action('up');
         } else if (radioAlt <= 63) {
-          if (this.autoCallOutPins & A380XRadioAutoCallOutFlags.Sixty) {
+          if (this.autoCallOutPins & A380XAutoCallOutFlags.Sixty) {
             this.pub.pub('enqueueSound', 'alt_60');
           }
           this.AltCallState.action('down');
@@ -660,7 +660,7 @@ export class LegacyGpws {
         if (radioAlt > 85) {
           this.AltCallState.action('up');
         } else if (radioAlt <= 73) {
-          if (this.autoCallOutPins & A380XRadioAutoCallOutFlags.Seventy) {
+          if (this.autoCallOutPins & A380XAutoCallOutFlags.Seventy) {
             this.pub.pub('enqueueSound', 'alt_70');
           }
           this.AltCallState.action('down');
@@ -670,7 +670,7 @@ export class LegacyGpws {
         if (radioAlt > 95) {
           this.AltCallState.action('up');
         } else if (radioAlt <= 83) {
-          if (this.autoCallOutPins & A380XRadioAutoCallOutFlags.Eighty) {
+          if (this.autoCallOutPins & A380XAutoCallOutFlags.Eighty) {
             this.pub.pub('enqueueSound', 'alt_80');
           }
           this.AltCallState.action('down');
@@ -680,7 +680,7 @@ export class LegacyGpws {
         if (radioAlt > 110) {
           this.AltCallState.action('up');
         } else if (radioAlt <= 93) {
-          if (this.autoCallOutPins & A380XRadioAutoCallOutFlags.Ninety) {
+          if (this.autoCallOutPins & A380XAutoCallOutFlags.Ninety) {
             this.pub.pub('enqueueSound', 'alt_90');
           }
           this.AltCallState.action('down');
@@ -690,7 +690,7 @@ export class LegacyGpws {
         if (radioAlt > 210) {
           this.AltCallState.action('up');
         } else if (radioAlt <= 110) {
-          if (this.autoCallOutPins & A380XRadioAutoCallOutFlags.OneHundred) {
+          if (this.autoCallOutPins & A380XAutoCallOutFlags.OneHundred) {
             this.pub.pub('enqueueSound', 'alt_100');
           }
           this.AltCallState.action('down');
@@ -700,7 +700,7 @@ export class LegacyGpws {
         if (radioAlt > 310) {
           this.AltCallState.action('up');
         } else if (radioAlt <= 210) {
-          if (this.autoCallOutPins & A380XRadioAutoCallOutFlags.TwoHundred) {
+          if (this.autoCallOutPins & A380XAutoCallOutFlags.TwoHundred) {
             this.pub.pub('enqueueSound', 'alt_200');
           }
           this.AltCallState.action('down');
@@ -710,7 +710,7 @@ export class LegacyGpws {
         if (radioAlt > 410) {
           this.AltCallState.action('up');
         } else if (radioAlt <= 310) {
-          if (this.autoCallOutPins & A380XRadioAutoCallOutFlags.ThreeHundred) {
+          if (this.autoCallOutPins & A380XAutoCallOutFlags.ThreeHundred) {
             this.pub.pub('enqueueSound', 'alt_300');
           }
           this.AltCallState.action('down');
@@ -720,7 +720,7 @@ export class LegacyGpws {
         if (radioAlt > 513) {
           this.AltCallState.action('up');
         } else if (radioAlt <= 410) {
-          if (this.autoCallOutPins & A380XRadioAutoCallOutFlags.FourHundred) {
+          if (this.autoCallOutPins & A380XAutoCallOutFlags.FourHundred) {
             this.pub.pub('enqueueSound', 'alt_400');
           }
           this.AltCallState.action('down');
@@ -730,7 +730,7 @@ export class LegacyGpws {
         if (radioAlt > 1020) {
           this.AltCallState.action('up');
         } else if (radioAlt <= 513) {
-          if (this.autoCallOutPins & A380XRadioAutoCallOutFlags.FiveHundred) {
+          if (this.autoCallOutPins & A380XAutoCallOutFlags.FiveHundred) {
             this.pub.pub('enqueueSound', 'alt_500');
           }
           this.AltCallState.action('down');
@@ -740,7 +740,7 @@ export class LegacyGpws {
         if (radioAlt > 2020) {
           this.AltCallState.action('up');
         } else if (radioAlt <= 1020) {
-          if (this.autoCallOutPins & A380XRadioAutoCallOutFlags.OneThousand) {
+          if (this.autoCallOutPins & A380XAutoCallOutFlags.OneThousand) {
             this.pub.pub('enqueueSound', 'alt_1000');
           }
           this.AltCallState.action('down');
@@ -750,7 +750,7 @@ export class LegacyGpws {
         if (radioAlt > 2530) {
           this.AltCallState.action('up');
         } else if (radioAlt <= 2020) {
-          if (this.autoCallOutPins & A380XRadioAutoCallOutFlags.TwoThousand) {
+          if (this.autoCallOutPins & A380XAutoCallOutFlags.TwoThousand) {
             this.pub.pub('enqueueSound', 'alt_2000');
           }
           this.AltCallState.action('down');
@@ -758,9 +758,9 @@ export class LegacyGpws {
         break;
       case 'over2500':
         if (radioAlt <= 2530) {
-          if (this.autoCallOutPins & A380XRadioAutoCallOutFlags.TwoThousandFiveHundred) {
+          if (this.autoCallOutPins & A380XAutoCallOutFlags.TwoThousandFiveHundred) {
             this.pub.pub('enqueueSound', 'alt_2500');
-          } else if (this.autoCallOutPins & A380XRadioAutoCallOutFlags.TwentyFiveHundred) {
+          } else if (this.autoCallOutPins & A380XAutoCallOutFlags.TwentyFiveHundred) {
             this.pub.pub('enqueueSound', 'alt_2500b');
           }
           this.AltCallState.action('down');
