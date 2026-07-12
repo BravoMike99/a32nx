@@ -92,6 +92,7 @@ import {
 // FIXME should not import from instruments
 import { FcdcSimvars } from '../../../instruments/src/MsfsAvionicsCommon/providers/FcdcPublisher';
 import { FwsAutoCallouts } from './FwsAutoCallouts';
+import { FwsSoundManagerEvents } from './FwsSoundEvents';
 
 export function xor(a: boolean, b: boolean): boolean {
   return !!((a ? 1 : 0) ^ (b ? 1 : 0));
@@ -150,7 +151,9 @@ export class FwsCore {
       IrBusEvents
   >();
 
-  private subs: Subscription[] = [];
+  private readonly pub = this.bus.getPublisher<FwsSoundManagerEvents>();
+
+  private readonly subs: Subscription[] = [];
 
   public readonly vhfSub = this.bus.getSubscriber<VhfComManagerDataEvents>();
 
@@ -296,6 +299,8 @@ export class FwsCore {
   private auralCrcKeys: string[] = [];
 
   private auralScKeys: string[] = [];
+
+  private readonly auralScInactive = Subject.create(false);
 
   public readonly auralCrcActive = Subject.create(false);
 
@@ -2446,6 +2451,11 @@ export class FwsCore {
       this.elecAcSecondaryFailure,
       this.bleedSecondaryFailure,
       this.fmsSwitchingNotNorm,
+      this.auralScInactive.sub((v) => {
+        if (!v) {
+          this.soundManager.dequeueAllSc();
+        }
+      }),
     );
   }
 
@@ -6006,7 +6016,7 @@ export class FwsCore {
     this.abnormalSensed.update();
     this.abnormalNonSensed.update();
     this.systemDisplayLogic.update(deltaTime);
-    this.autoCallouts.update(deltaTime, this.soundManager.getKeepMaxReversePlayed());
+    this.autoCallouts.update(deltaTime, this.soundManager.getMaxReversePlayed());
 
     if (this.debugDataToOisEnabled.get()) {
       this.updateOisDebugData();
