@@ -1083,7 +1083,7 @@
 
         <!-- CRC ==========================================================================================-->
 
-        <Sound WwiseData="true" WwiseEvent="CRC_380" NodeName="SOUND_WIPER_L" ViewPoint="Inside" LocalVar="A32NX_FWC_CRC">
+        <Sound WwiseData="true" WwiseEvent="CRC_380" NodeName="SOUND_WIPER_L" ViewPoint="Inside" LocalVar="A32NX_FWC_CRC" Continuous="true">
             <Range LowerBound="0.5" />
 
         </Sound>
@@ -1123,40 +1123,207 @@
         </Sound>
 
         <!-- ROP/ROW warnings =====================================================================-->
-        <Sound WwiseEvent="brake_max_braking" WwiseData="true" NodeName="SOUND_WIPER_L" LocalVar="A32NX_AUDIO_ROP_MAX_BRAKING" Continuous="true">
-            <Range LowerBound="1"/>
-
+        <!-- ROP/ROW warnings =====================================================================-->
+        <Sound WwiseEvent="brake_max_braking" WwiseData="true" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="true">
+            <Range LowerBound="5" UpperBound="5"/>
         </Sound>
 
-        <Sound WwiseEvent="set_max_reverse" WwiseData="true" NodeName="SOUND_WIPER_L" LocalVar="A32NX_AUDIO_ROW_SET_MAX_REVERSE" Continuous="true">
-            <Range LowerBound="1"/>
-
+        <Sound WwiseEvent="set_max_reverse" WwiseData="true" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="true">
+            <Range LowerBound="4" UpperBound="4"/>
         </Sound>
 
-        <Sound WwiseEvent="keep_max_reverse" WwiseData="true" NodeName="SOUND_WIPER_L" LocalVar="A32NX_AUDIO_ROP_KEEP_MAX_REVERSE" Continuous="false">
-            <Range LowerBound="1"/>
-
+        <Sound WwiseEvent="keep_max_reverse" WwiseData="true" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="3" UpperBound="3"/>
         </Sound>
 
-        <Sound WwiseEvent="runway_too_short" WwiseData="true" NodeName="SOUND_WIPER_L" LocalVar="A32NX_AUDIO_ROW_RWY_TOO_SHORT" Continuous="true">
-            <Range LowerBound="1"/>
-
+        <Sound WwiseEvent="runway_too_short" WwiseData="true" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="true">
+            <Range LowerBound="2" UpperBound="2"/>
         </Sound>
 
-        <Sound WwiseEvent="autobrake_off" WwiseData="true" NodeName="SOUND_WIPER_L" LocalVar="A32NX_AUDIO_AUTOBRAKE_OFF" Continuous="false">
-            <Range LowerBound="1"/>
-
+        <Sound WwiseEvent="autobrake_off" WwiseData="true" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="1" UpperBound="1"/>
         </Sound>
 
-        <Sound WwiseData="true" WwiseEvent="mastercaution" NodeName="PEDALS_LEFT" ViewPoint="Inside" LocalVar="A32NX_FWC_SC" Continuous="false">
+        <!-- Continuous true so we can break early if needed -->
+        <Sound WwiseData="true" WwiseEvent="mastercaution" NodeName="PEDALS_LEFT" ViewPoint="Inside" LocalVar="A32NX_FWC_SC" Continuous="true">
             <Range LowerBound="0.5" />
 
         </Sound>
 
         <!-- V1 callout ===================================================================== -->
-        <Sound WwiseEvent="V1" WwiseData="true" NodeName="SOUND_WIPER_L" LocalVar="A32NX_AUDIO_V1_CALLOUT" Continuous="false">
-            <Range LowerBound="1"/>
+        <Sound WwiseEvent="V1" WwiseData="true" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="6" UpperBound="6"/>
+        </Sound>
 
+        <!-- Pitch Pitch callout ============================================================= -->
+        <Sound WwiseEvent="pitch_pitch" WwiseData="true" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="7" UpperBound="7"/>
+        </Sound>
+
+        <!-- Speed Speed Speed callout ======================================================= -->
+        <Sound WwiseEvent="speed_speed_speed" WwiseData="true" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="8" UpperBound="8"/>
+        </Sound>
+
+        <!-- Minimums callout ================================================================ -->
+        <Sound WwiseEvent="minimums" WwiseData="true" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="9" UpperBound="9"/>
+        </Sound>
+
+        <!-- 100 Above callout ================================================================ -->
+        <Sound WwiseEvent="hundred_above" WwiseData="true" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="10" UpperBound="10"/>
+        </Sound>
+
+        <!-- Altitude callouts =============================================================== -->
+        <Sound WwiseData="true" WwiseEvent="alt_2500" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="12" UpperBound="12"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="alt_2500b" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="13" UpperBound="13"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="alt_2000" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="14" UpperBound="14"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="alt_1000" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="15" UpperBound="15"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="alt_500" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="16" UpperBound="16"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="alt_400" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="17" UpperBound="17"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="intermediate_400" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="18" UpperBound="18"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="alt_300" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="19" UpperBound="19"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="intermediate_300" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="20" UpperBound="20"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="alt_200" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="21" UpperBound="21"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="intermediate_200" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="22" UpperBound="22"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="alt_100" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="23" UpperBound="23"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="intermediate_100" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="24" UpperBound="24"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="hundred_and" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="25" UpperBound="25"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="90_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="26" UpperBound="26"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="80_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="27" UpperBound="27"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="70_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="28" UpperBound="28"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="60_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="29" UpperBound="29"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="50_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="30" UpperBound="30"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="40_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="31" UpperBound="31"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="30_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="32" UpperBound="32"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="20_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="33" UpperBound="33"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="19_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="34" UpperBound="34"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="18_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="35" UpperBound="35"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="17_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="36" UpperBound="36"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="16_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="37" UpperBound="37"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="15_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="38" UpperBound="38"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="14_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="39" UpperBound="39"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="13_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="40" UpperBound="40"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="12_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="41" UpperBound="41"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="11_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="42" UpperBound="42"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="10_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="43" UpperBound="43"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="9_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="44" UpperBound="44"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="8_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="45" UpperBound="45"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="7_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="46" UpperBound="46"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="6_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="47" UpperBound="47"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="5_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="48" UpperBound="48"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="4_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="49" UpperBound="49"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="3_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="50" UpperBound="50"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="2_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="51" UpperBound="51"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="1_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="52" UpperBound="52"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="7_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_INTERMEDIATE_ALTITUDE" Units="ENUM" Continuous="false">
+            <Range LowerBound="7" UpperBound="7"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="6_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_INTERMEDIATE_ALTITUDE" Units="ENUM" Continuous="false">
+            <Range LowerBound="6" UpperBound="6"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="5_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_INTERMEDIATE_ALTITUDE" Units="ENUM" Continuous="false">
+            <Range LowerBound="5" UpperBound="5"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="4_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_INTERMEDIATE_ALTITUDE" Units="ENUM" Continuous="false">
+            <Range LowerBound="4" UpperBound="4"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="3_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_INTERMEDIATE_ALTITUDE" Units="ENUM" Continuous="false">
+            <Range LowerBound="3" UpperBound="3"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="2_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_INTERMEDIATE_ALTITUDE" Units="ENUM" Continuous="false">
+            <Range LowerBound="2" UpperBound="2"/>
+        </Sound>
+        <Sound WwiseData="true" WwiseEvent="1_380" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_INTERMEDIATE_ALTITUDE" Units="ENUM" Continuous="false">
+            <Range LowerBound="1" UpperBound="1"/>
+        </Sound>
+
+        <!-- Retard callout ================================================================== -->
+        <Sound WwiseEvent="retard" WwiseData="true" NodeName="SOUND_WIPER_L" LocalVarEx1="A380X_FWS_AUDIO_SYNTHETIC_VOICE" Units="ENUM" Continuous="false">
+            <Range LowerBound="53" UpperBound="53"/>
         </Sound>
 
     </SimVarSounds>
@@ -1182,48 +1349,9 @@
         <Sound WwiseData="true" WwiseEvent="aural_too_low_gear" Continuous="false" NodeName="PEDALS_LEFT" ViewPoint="Inside" />
         <Sound WwiseData="true" WwiseEvent="aural_too_low_flaps" Continuous="false" NodeName="PEDALS_LEFT" ViewPoint="Inside" />
         <Sound WwiseData="true" WwiseEvent="aural_too_low_terrain" Continuous="false" NodeName="PEDALS_LEFT" ViewPoint="Inside" />
-        <Sound WwiseData="true" WwiseEvent="aural_5ft" />
-        <Sound WwiseData="true" WwiseEvent="aural_10ft" />
-        <Sound WwiseData="true" WwiseEvent="aural_20ft" />
-        <Sound WwiseData="true" WwiseEvent="aural_30ft" />
-        <Sound WwiseData="true" WwiseEvent="aural_40ft" />
-        <Sound WwiseData="true" WwiseEvent="aural_50ft" />
-        <Sound WwiseData="true" WwiseEvent="aural_60ft" />
-        <Sound WwiseData="true" WwiseEvent="aural_70ft" />
-        <Sound WwiseData="true" WwiseEvent="aural_100ft" />
-        <Sound WwiseData="true" WwiseEvent="aural_200ft" />
-        <Sound WwiseData="true" WwiseEvent="aural_300ft" />
-        <Sound WwiseData="true" WwiseEvent="aural_400ft" />
-        <Sound WwiseData="true" WwiseEvent="aural_500ft" />
-        <Sound WwiseData="true" WwiseEvent="aural_1000ft" />
-        <Sound WwiseData="true" WwiseEvent="aural_2500ft" />
-        <Sound WwiseData="true" WwiseEvent="aural_retard" />
         <Sound WwiseEvent="cavcharge" WwiseData="true" NodeName="PEDALS_LEFT" Continuous="false" />
         <Sound WwiseEvent="3click" WwiseData="true" NodeName="PEDALS_LEFT" Continuous="false" />
         <Sound WwiseData="true" WwiseEvent="fwdgalley" NodeName="SOUND_WIPER_L" />
-
-        <!-- New RA callouts ====================================================================================-->
-        <Sound WwiseData="true" WwiseEvent="5_380" NodeName="SOUND_WIPER_L" />
-        <Sound WwiseData="true" WwiseEvent="10_380" NodeName="SOUND_WIPER_L" />
-        <Sound WwiseData="true" WwiseEvent="20_380" NodeName="SOUND_WIPER_L" />
-        <Sound WwiseData="true" WwiseEvent="30_380" NodeName="SOUND_WIPER_L" />
-        <Sound WwiseData="true" WwiseEvent="40_380" NodeName="SOUND_WIPER_L" />
-        <Sound WwiseData="true" WwiseEvent="50_380" NodeName="SOUND_WIPER_L" />
-        <Sound WwiseData="true" WwiseEvent="60_380" NodeName="SOUND_WIPER_L" />
-        <Sound WwiseData="true" WwiseEvent="70_380" NodeName="SOUND_WIPER_L" />
-        <Sound WwiseData="true" WwiseEvent="80_380" NodeName="SOUND_WIPER_L" />
-        <Sound WwiseData="true" WwiseEvent="90_380" NodeName="SOUND_WIPER_L" />
-        <Sound WwiseData="true" WwiseEvent="new_100" NodeName="SOUND_WIPER_L" />
-        <Sound WwiseData="true" WwiseEvent="new_200" NodeName="SOUND_WIPER_L" />
-        <Sound WwiseData="true" WwiseEvent="new_300" NodeName="SOUND_WIPER_L" />
-        <Sound WwiseData="true" WwiseEvent="new_400" NodeName="SOUND_WIPER_L" />
-        <Sound WwiseData="true" WwiseEvent="new_500" NodeName="SOUND_WIPER_L" />
-        <Sound WwiseData="true" WwiseEvent="new_1000" NodeName="SOUND_WIPER_L" />
-        <Sound WwiseData="true" WwiseEvent="new_2500" NodeName="SOUND_WIPER_L" />
-        <Sound WwiseData="true" WwiseEvent="new_2_500" NodeName="SOUND_WIPER_L" />
-        <Sound WwiseData="true" WwiseEvent="new_retard" NodeName="SOUND_WIPER_L" />
-        <Sound WwiseData="true" WwiseEvent="aural_minimumnew" NodeName="SOUND_WIPER_L" />
-        <Sound WwiseData="true" WwiseEvent="aural_100above" NodeName="SOUND_WIPER_L" />
 
         <!-- TCAS callouts ====================================================================================-->
 
