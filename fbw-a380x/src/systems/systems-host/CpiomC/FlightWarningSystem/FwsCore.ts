@@ -42,6 +42,7 @@ import {
   RegisteredSimVar,
   UpdateThrottler,
   IrBusEvents,
+  RaBusEvents,
 } from '@flybywiresim/fbw-sdk';
 import { VerticalMode, LateralMode, AutoThrustModeMessage } from '@shared/autopilot';
 import { RmpState, VhfComManagerDataEvents } from '@flybywiresim/rmp';
@@ -148,7 +149,8 @@ export class FwsCore {
       MsfsFlightModelEvents &
       OisDebugDataControlEvents &
       StallWarningEvents &
-      IrBusEvents
+      IrBusEvents &
+      RaBusEvents
   >();
 
   private readonly pub = this.bus.getPublisher<FwsSoundManagerEvents>();
@@ -2043,11 +2045,10 @@ export class FwsCore {
 
   public readonly apuAvailAndApuBleedOn = Subject.create(false);
 
-  public readonly radioHeight1 = Arinc429Register.empty();
+  public readonly radioHeight1 = Arinc429LocalVarConsumerSubject.create(this.sub.on('ra_radio_altitude_1'), 0);
+  public readonly radioHeight2 = Arinc429LocalVarConsumerSubject.create(this.sub.on('ra_radio_altitude_2'), 0);
 
-  public readonly radioHeight2 = Arinc429Register.empty();
-
-  public readonly radioHeight3 = Arinc429Register.empty();
+  public readonly radioHeight3 = Arinc429LocalVarConsumerSubject.create(this.sub.on('ra_radio_altitude_3'), 0);
 
   public readonly toMemo = Subject.create(0);
 
@@ -2297,7 +2298,7 @@ export class FwsCore {
   public readonly information = new FwsInformation(this);
   public readonly limitations = new FwsLimitations(this);
   public readonly systemDisplayLogic = new FwsSystemDisplayLogic(this);
-  private readonly autoCallouts = new FwsAutoCallouts(this);
+  private readonly autoCallouts = new FwsAutoCallouts();
   public ewdAbnormal: EwdAbnormalDict;
   public allSuppressableItems: FwsSuppressableItemDict;
   private readonly failureActivationTime = new Map<keyof FwsSuppressableItemDict, number>();
@@ -2854,7 +2855,14 @@ export class FwsCore {
     this.fws2AudioFunctionLost.set(this.failuresConsumer.isActive(A380Failure.Fws2AudioFunction));
 
     // Update flight phases
-    this.flightPhases.update(deltaTime);
+    // RA acquisition
+    const ra1 = this.radioHeight1.get();
+    const ra2 = this.radioHeight2.get();
+    const ra3 = this.radioHeight3.get();
+    this.height1Failed.set(ra1.isFailureWarning());
+    this.height2Failed.set(ra2.isFailureWarning());
+    this.height3Failed.set(ra3.isFailureWarning());
+    this.flightPhases.update(deltaTime, ra1, ra2, ra3);
 
     // Play sounds
     this.soundManager.onUpdate(deltaTime);
@@ -3414,13 +3422,7 @@ export class FwsCore {
     this.adiru1ModeSelector.set(SimVar.GetSimVarValue('L:A32NX_OVHD_ADIRS_IR_1_MODE_SELECTOR_KNOB', 'enum'));
     this.adiru2ModeSelector.set(SimVar.GetSimVarValue('L:A32NX_OVHD_ADIRS_IR_2_MODE_SELECTOR_KNOB', 'enum'));
     this.adiru3ModeSelector.set(SimVar.GetSimVarValue('L:A32NX_OVHD_ADIRS_IR_3_MODE_SELECTOR_KNOB', 'enum'));
-    // RA acquisition
-    this.radioHeight1.setFromSimVar('L:A32NX_RA_1_RADIO_ALTITUDE');
-    this.radioHeight2.setFromSimVar('L:A32NX_RA_2_RADIO_ALTITUDE');
-    this.radioHeight3.setFromSimVar('L:A32NX_RA_3_RADIO_ALTITUDE');
-    this.height1Failed.set(this.radioHeight1.isFailureWarning());
-    this.height2Failed.set(this.radioHeight2.isFailureWarning());
-    this.height3Failed.set(this.radioHeight3.isFailureWarning());
+
     // overspeed
     const adr3MaxCas = Arinc429Word.fromSimVarValue('L:A32NX_ADIRS_ADR_3_MAX_AIRSPEED');
 
@@ -3508,33 +3510,18 @@ export class FwsCore {
 
     // TODO some renaming
     this.ignoreRaOnGroundTrigger.write(
-      this.radioHeight1.isNoComputedData() &&
-        this.radioHeight2.isNoComputedData() &&
-        this.radioHeight3.isNoComputedData() &&
-        !lgciuOnGroundDisagree,
+      ra1.isNoComputedData() && ra2.isNoComputedData() && ra3.isNoComputedData() && !lgciuOnGroundDisagree,
       deltaTime,
     );
-    this.ra1OnGroundMem.write(
-      this.radioHeight1.value < 5,
-      !leftCompressedHardwireLgciu1 || !leftCompressedHardwireLgciu2,
-    );
-    this.ra2OnGroundMem.write(
-      this.radioHeight2.value < 5,
-      !leftCompressedHardwireLgciu1 || !leftCompressedHardwireLgciu2,
-    );
-    this.ra3OnGroundMem.write(
-      this.radioHeight3.value < 5,
-      !leftCompressedHardwireLgciu1 || !leftCompressedHardwireLgciu2,
-    );
+    this.ra1OnGroundMem.write(ra1.value < 5, !leftCompressedHardwireLgciu1 || !leftCompressedHardwireLgciu2);
+    this.ra2OnGroundMem.write(ra2.value < 5, !leftCompressedHardwireLgciu1 || !leftCompressedHardwireLgciu2);
+    this.ra3OnGroundMem.write(ra3.value < 5, !leftCompressedHardwireLgciu1 || !leftCompressedHardwireLgciu2);
     const ra1OnGround =
-      (this.radioHeight1.isNormalOperation() || this.radioHeight1.isFunctionalTest()) &&
-      (this.radioHeight1.value < 5 || this.ra1OnGroundMem.read());
+      (ra1.isNormalOperation() || ra1.isFunctionalTest()) && (ra1.value < 5 || this.ra1OnGroundMem.read());
     const ra2OnGround =
-      (this.radioHeight2.isNormalOperation() || this.radioHeight2.isFunctionalTest()) &&
-      (this.radioHeight2.value < 5 || this.ra2OnGroundMem.read());
+      (ra2.isNormalOperation() || ra2.isFunctionalTest()) && (ra2.value < 5 || this.ra2OnGroundMem.read());
     const ra3OnGround =
-      (this.radioHeight3.isNormalOperation() || this.radioHeight3.isFunctionalTest()) &&
-      (this.radioHeight3.value < 5 || this.ra3OnGroundMem.read());
+      (ra3.isNormalOperation() || ra3.isFunctionalTest()) && (ra3.value < 5 || this.ra3OnGroundMem.read());
     const onGroundCount = countTrue(
       leftCompressedHardwireLgciu1,
       leftCompressedHardwireLgciu2,
@@ -3542,10 +3529,7 @@ export class FwsCore {
       ra2OnGround,
       ra3OnGround,
     );
-    const raInvalid =
-      this.radioHeight1.isFailureWarning() ||
-      this.radioHeight2.isFailureWarning() ||
-      this.radioHeight3.isFailureWarning();
+    const raInvalid = ra1.isFailureWarning() || ra2.isFailureWarning() || ra3.isFailureWarning();
     this.onGroundImmediate =
       (onGroundA && this.ignoreRaOnGroundTrigger.read()) ||
       (onGroundCount > 2 && !raInvalid) ||
@@ -3658,10 +3642,7 @@ export class FwsCore {
     this.autoThrustDisengagedInstantPulse.write(athrEngagedOrArmed);
     this.autoThrustInstinctiveDiscPressed.write(false, deltaTime);
 
-    const below50ft =
-      this.radioHeight1.valueOr(2500) < 50 &&
-      this.radioHeight2.valueOr(2500) < 50 &&
-      this.radioHeight3.valueOr(2500) < 50;
+    const below50ft = ra1.valueOr(2500) < 50 && ra2.valueOr(2500) < 50 && ra3.valueOr(2500) < 50;
 
     if (below50ft && this.allThrottleIdle.get()) {
       this.autoThrustInhibitCaution = true;
@@ -3797,8 +3778,7 @@ export class FwsCore {
 
     this.eng1Or2TakeoffPowerConfirm.write(engOneOrTwoTakeoffPower, deltaTime);
     this.eng3Or4TakeoffPowerConfirm.write(engThreeOrFourTakeoffPower, deltaTime);
-    const raAbove1500 =
-      this.radioHeight1.valueOr(0) > 1500 || this.radioHeight2.valueOr(0) > 1500 || this.radioHeight3.valueOr(0) > 1500;
+    const raAbove1500 = ra1.valueOr(0) > 1500 || ra2.valueOr(0) > 1500 || ra3.valueOr(0) > 1500;
     this.eng1Or2TakeoffPower.set(engOneOrTwoTakeoffPower || (this.eng1Or2TakeoffPowerConfirm.read() && !raAbove1500));
     this.eng3Or4TakeoffPower.set(
       engThreeOrFourTakeoffPower || (this.eng3Or4TakeoffPowerConfirm.read() && !raAbove1500),
@@ -4776,10 +4756,7 @@ export class FwsCore {
     );
 
     // gnd splr not armed
-    const raBelow500 =
-      this.radioHeight1.valueOr(Infinity) < 500 ||
-      this.radioHeight2.valueOr(Infinity) < 500 ||
-      this.radioHeight3.valueOr(Infinity) < 500;
+    const raBelow500 = ra1.valueOr(Infinity) < 500 || ra2.valueOr(Infinity) < 500 || ra3.valueOr(Infinity) < 500;
 
     const lgDown =
       this.lgciu1DiscreteWord1.bitValueOr(29, false) ||
@@ -4825,20 +4802,15 @@ export class FwsCore {
     const fwcFlightPhase = this.flightPhase.get();
     const flightPhase4567 =
       fwcFlightPhase === 4 || fwcFlightPhase === 5 || fwcFlightPhase === 6 || fwcFlightPhase === 7;
-    const below750Ra =
-      Math.min(
-        this.radioHeight1.valueOr(Infinity),
-        this.radioHeight2.valueOr(Infinity),
-        this.radioHeight3.valueOr(Infinity),
-      ) < 750;
+    const below750Ra = Math.min(ra1.valueOr(Infinity), ra2.valueOr(Infinity), ra3.valueOr(Infinity)) < 750;
     const altInhibit =
       (this.adrPressureAltitude.get() ?? 0) > 18500 &&
-      !this.radioHeight1.isNoComputedData() &&
-      !this.radioHeight1.isNormalOperation() &&
-      !this.radioHeight2.isNoComputedData() &&
-      !this.radioHeight2.isNormalOperation() &&
-      !this.radioHeight3.isNoComputedData() &&
-      !this.radioHeight3.isNormalOperation();
+      !ra1.isNoComputedData() &&
+      !ra1.isNormalOperation() &&
+      !ra2.isNoComputedData() &&
+      !ra2.isNormalOperation() &&
+      !ra3.isNoComputedData() &&
+      !ra3.isNormalOperation();
     this.lgciu1Fault.set(this.lgciu1DiscreteWord4.bitValueOr(29, false));
     this.lgciu2Fault.set(this.lgciu2DiscreteWord4.bitValueOr(29, false));
     const gearNotDownlocked = !mainGearDownlocked && (!this.lgciu1Fault.get() || !this.lgciu2Fault.get());
@@ -4848,14 +4820,11 @@ export class FwsCore {
       !this.eng3Or4TakeoffPower.get() &&
       below750Ra &&
       gearNotDownlocked;
-    const allRaInvalid =
-      this.radioHeight1.isFailureWarning() &&
-      this.radioHeight2.isFailureWarning() &&
-      this.radioHeight3.isFailureWarning();
+    const allRaInvalid = ra1.isFailureWarning() && ra2.isFailureWarning() && ra3.isFailureWarning();
     const allRaInvalidOrNcd =
-      (this.radioHeight1.isNoComputedData() || this.radioHeight1.isFailureWarning()) &&
-      (this.radioHeight2.isNoComputedData() || this.radioHeight2.isFailureWarning()) &&
-      (this.radioHeight3.isNoComputedData() || this.radioHeight3.isFailureWarning());
+      (ra1.isNoComputedData() || ra1.isFailureWarning()) &&
+      (ra2.isNoComputedData() || ra2.isFailureWarning()) &&
+      (ra3.isNoComputedData() || ra3.isFailureWarning());
     const flapsApprCondition =
       ((this.flapsSuperiorTo8Deg.get() && !this.flapsSuperiorTo17Deg.get() && allRaInvalid) ||
         (this.flapsSuperiorTo17Deg.get() && allRaInvalidOrNcd)) &&
@@ -4984,9 +4953,9 @@ export class FwsCore {
         isCasAbove60 &&
         this.stallWarningRaw.get() &&
         flightPhase6789 &&
-        this.radioHeight1.valueOr(Infinity) > 1500 &&
-        this.radioHeight2.valueOr(Infinity) > 1500 &&
-        this.radioHeight3.valueOr(Infinity) > 1500,
+        ra1.valueOr(Infinity) > 1500 &&
+        ra2.valueOr(Infinity) > 1500 &&
+        ra3.valueOr(Infinity) > 1500,
     );
 
     // TAWS
@@ -6016,7 +5985,7 @@ export class FwsCore {
     this.abnormalSensed.update();
     this.abnormalNonSensed.update();
     this.systemDisplayLogic.update(deltaTime);
-    this.autoCallouts.update(deltaTime, this.soundManager.getMaxReversePlayed());
+    this.autoCallouts.update(deltaTime, flightPhase, this.soundManager.getMaxReversePlayed(), ra1, ra2, ra3);
 
     if (this.debugDataToOisEnabled.get()) {
       this.updateOisDebugData();

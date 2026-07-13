@@ -3,6 +3,7 @@
 /* eslint-disable camelcase */
 import {
   Arinc429Register,
+  Arinc429WordData,
   NXLogicConfirmNode,
   NXLogicMemoryNode,
   NXLogicTriggeredMonostableNode,
@@ -159,25 +160,25 @@ export class FwsFlightPhases {
     this._wasReach200ft = false;
   }
 
-  update(deltaTime: number) {
-    this._updateFlightPhase(deltaTime);
+  update(deltaTime: number, ra1: Arinc429WordData, ra2: Arinc429WordData, ra3: Arinc429WordData): void {
+    this._updateFlightPhase(deltaTime, ra1, ra2, ra3);
     this._updateTakeoffMemo(deltaTime);
-    this._updateLandingMemo(deltaTime);
+    this._updateLandingMemo(deltaTime, ra1, ra2, ra3);
     this._updateAltitudeWarning();
   }
 
-  _updateFlightPhase(_deltaTime: number) {
-    const raHeight1Invalid = this.fws.radioHeight1.isFailureWarning() || this.fws.radioHeight1.isNoComputedData();
-    const raHeight2Invalid = this.fws.radioHeight2.isFailureWarning() || this.fws.radioHeight2.isNoComputedData();
+  _updateFlightPhase(_deltaTime: number, ra1: Arinc429WordData, ra2: Arinc429WordData, ra3: Arinc429WordData) {
+    const raHeight1Invalid = ra1.isInvalid();
+    const raHeight2Invalid = ra2.isInvalid();
     let radioHeight;
     if (raHeight1Invalid) {
       if (raHeight2Invalid) {
-        radioHeight = this.fws.radioHeight3;
+        radioHeight = ra3;
       } else {
-        radioHeight = this.fws.radioHeight2;
+        radioHeight = ra2;
       }
     } else {
-      radioHeight = this.fws.radioHeight1;
+      radioHeight = ra1;
     }
     // TODO find a better source for the following value ("core speed at or above idle")
     // Note that N1 starts below idle on spawn on the runway, so this should be below 16 to not jump back to phase 1
@@ -188,10 +189,7 @@ export class FwsFlightPhases {
       this.fws.N1Eng4.get() > 15;
     const oneEngineRunning = this.oneEngineRunningConf.write(oneEngRunning, _deltaTime);
     const noEngineRunning = !oneEngineRunning;
-    const hFail =
-      this.fws.radioHeight1.isFailureWarning() &&
-      this.fws.radioHeight2.isFailureWarning() &&
-      this.fws.radioHeight3.isFailureWarning();
+    const hFail = ra1.isFailureWarning() && ra2.isFailureWarning() && ra3.isFailureWarning();
     const adcTestInhib = false;
 
     const groundImmediate = Simplane.getIsGrounded();
@@ -368,20 +366,20 @@ export class FwsFlightPhases {
     SimVar.SetSimVarValue('L:A32NX_FWC_TOMEMO', 'Bool', this.toMemo);
   }
 
-  _updateLandingMemo(_deltaTime: number) {
-    const radioHeight1Invalid = this.fws.radioHeight1.isFailureWarning() || this.fws.radioHeight1.isNoComputedData();
-    const radioHeight2Invalid = this.fws.radioHeight2.isFailureWarning() || this.fws.radioHeight2.isNoComputedData();
-    const radioHeight3Invalid = this.fws.radioHeight3.isFailureWarning() || this.fws.radioHeight3.isNoComputedData();
+  _updateLandingMemo(_deltaTime: number, ra1: Arinc429WordData, ra2: Arinc429WordData, ra3: Arinc429WordData) {
+    const radioHeight1Invalid = ra1.isFailureWarning() || ra1.isNoComputedData();
+    const radioHeight2Invalid = ra2.isFailureWarning() || ra2.isNoComputedData();
+    const radioHeight3Invalid = ra3.isFailureWarning() || ra3.isNoComputedData();
     const gearDownlocked = SimVar.GetSimVarValue('GEAR TOTAL PCT EXTENDED', 'percent') > 0.95;
 
     const setBelow2000ft =
-      (this.fws.radioHeight1.value < 2000 && !radioHeight1Invalid) ||
-      (this.fws.radioHeight2.value < 2000 && !radioHeight2Invalid) ||
-      (this.fws.radioHeight3.value < 2000 && !radioHeight3Invalid);
+      (ra1.value < 2000 && !radioHeight1Invalid) ||
+      (ra2.value < 2000 && !radioHeight2Invalid) ||
+      (ra3.value < 2000 && !radioHeight3Invalid);
     const resetBelow2000ft =
-      (this.fws.radioHeight1.value > 2200 || radioHeight1Invalid) &&
-      (this.fws.radioHeight2.value > 2200 || radioHeight2Invalid) &&
-      (this.fws.radioHeight3.value > 2200 || radioHeight3Invalid);
+      (ra1.value > 2200 || radioHeight1Invalid) &&
+      (ra2.value > 2200 || radioHeight2Invalid) &&
+      (ra3.value > 2200 || radioHeight3Invalid);
     const memo2 = this.memoLdgMemo_below2000ft.write(setBelow2000ft, resetBelow2000ft);
 
     const setInhibitMemo = this.memoLdgMemo_conf01.write(

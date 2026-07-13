@@ -6,9 +6,9 @@ import {
   NXLogicTriggeredMonostableNode,
   Arinc429Register,
   RegisteredSimVar,
+  Arinc429WordData,
 } from '@flybywiresim/fbw-sdk';
 import { SimVarValueType, Subject } from '@microsoft/msfs-sdk';
-import { FwsCore } from './FwsCore';
 
 export class FwsAutoCallouts {
   /** ROW/ROP Callouts **/
@@ -32,12 +32,47 @@ export class FwsAutoCallouts {
   // RUNWAY TOO SHORT
   public readonly runwayTooShort = Subject.create(false);
 
-  constructor(private readonly fws: FwsCore) {}
+  /** Radio height calculated from the radio altimeter. Used for auto callouts */
+  private radioHeight: number | null = null;
 
-  public update(deltaTime: number, maxReversePlayed: boolean): void {
-    const flightPhase = this.fws.flightPhase.get();
+  private readonly fmmdaVar = RegisteredSimVar.create('L:A32NX_FM1_DECISION_ALTITUDE', SimVarValueType.Enum);
+  private readonly fmMda = Arinc429Register.empty();
+  private readonly fmDhVar = RegisteredSimVar.create('L:A32NX_FM1_DECISION_HEIGHT', SimVarValueType.Enum);
+  private readonly fmDh = Arinc429Register.empty();
+
+  constructor() {}
+
+  public update(
+    deltaTime: number,
+    flightPhase: number,
+    maxReversePlayed: boolean,
+    ra1: Arinc429WordData,
+    ra2: Arinc429WordData,
+    ra3: Arinc429WordData,
+  ): void {
     this.updateRowRopWarnings(flightPhase, deltaTime, maxReversePlayed);
+    this.radioAltitudeSelection(ra1, ra2, ra3);
   }
+
+  private radioAltitudeSelection(ra1: Arinc429WordData, ra2: Arinc429WordData, ra3: Arinc429WordData) {
+    const ra1Valid = !ra1.isInvalid();
+    const ra2Valid = !ra2.isInvalid();
+    const ra3Valid = !ra3.isInvalid();
+    if (ra1Valid && ra2Valid && ra3Valid) {
+      const highestRa = Math.max(ra1.value, ra2.value, ra3.value);
+      const minimumRa = Math.min(ra1.value, ra2.value, ra3.value);
+      // Get the middle value.
+      this.radioHeight = ra1.value + ra2.value + ra3.value - highestRa - minimumRa;
+    } else if (!ra1Valid && !ra2Valid && !ra3Valid) {
+      this.radioHeight = null;
+    } else {
+      const firstValidRa = ra1Valid ? ra1 : ra2Valid ? ra2 : ra3;
+      const secondValidRa = ra1Valid && ra2Valid ? ra2 : ra1Valid && ra3Valid ? ra3 : ra2Valid && ra3Valid ? ra3 : null;
+      this.radioHeight = secondValidRa ? (firstValidRa.value + secondValidRa.value) / 2 : firstValidRa.valueOr(0);
+    }
+  }
+
+  private updateMinimumsWarnings() {}
 
   updateRowRopWarnings(flightPhase: number, deltaTime: number, maxReversePlayed: boolean): void {
     this.rowRopStatusWord.set(this.rowRopStatusWordVar.get());
