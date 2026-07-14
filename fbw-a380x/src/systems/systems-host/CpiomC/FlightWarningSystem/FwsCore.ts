@@ -43,6 +43,8 @@ import {
   UpdateThrottler,
   IrBusEvents,
   RaBusEvents,
+  TawsDataEvents,
+  AdrBusEvents,
 } from '@flybywiresim/fbw-sdk';
 import { VerticalMode, LateralMode, AutoThrustModeMessage } from '@shared/autopilot';
 import { RmpState, VhfComManagerDataEvents } from '@flybywiresim/rmp';
@@ -150,7 +152,9 @@ export class FwsCore {
       OisDebugDataControlEvents &
       StallWarningEvents &
       IrBusEvents &
-      RaBusEvents
+      RaBusEvents &
+      TawsDataEvents &
+      AdrBusEvents
   >();
 
   private readonly pub = this.bus.getPublisher<FwsSoundManagerEvents>();
@@ -1662,8 +1666,8 @@ export class FwsCore {
   public readonly adr2Faulty = Subject.create(false);
   public readonly adr3Faulty = Subject.create(false);
 
-  private readonly adr3UsedLeft = Subject.create(false);
-  private readonly adr3UsedRight = Subject.create(false);
+  private adr3UsedLeft = false;
+  private adr3UsedRight = false;
 
   public readonly computedAirSpeedToNearest2 = MappedSubject.create(
     ([cas1, cas2, cas3, sideOn3]) =>
@@ -1683,6 +1687,19 @@ export class FwsCore {
   );
 
   public readonly adrPressureAltitude = Subject.create<number | null>(0);
+
+  private readonly adr1CorrectedAltLeft = Arinc429LocalVarConsumerSubject.create(
+    this.sub.on('adr_baro_corrected_altitude_left_1'),
+  );
+  private readonly adr3CorrectedAltLeft = Arinc429LocalVarConsumerSubject.create(
+    this.sub.on('adr_baro_corrected_altitude_left_3'),
+  );
+  private readonly adr2CorrectedAltRight = Arinc429LocalVarConsumerSubject.create(
+    this.sub.on('adr_baro_corrected_altitude_right_2'),
+  );
+  private readonly adr3CorrectedAltRight = Arinc429LocalVarConsumerSubject.create(
+    this.sub.on('adr_baro_corrected_altitude_right_3'),
+  );
 
   public readonly ir1MaintWord = Arinc429Register.empty();
   public readonly ir2MaintWord = Arinc429Register.empty();
@@ -1840,6 +1857,13 @@ export class FwsCore {
   public readonly taws2FaultCond = Subject.create(false);
 
   public readonly taws1FailedSimvar = RegisteredSimVar.createBoolean('L:A32NX_TAWS_1_FAILED');
+  private readonly egpwsAlert1DiscreteWord2 = Arinc429LocalVarConsumerSubject.create(
+    this.sub.on('egpws_alert_discrete_word_2_1'),
+  );
+
+  private readonly egpwsAlert2DiscreteWord2 = Arinc429LocalVarConsumerSubject.create(
+    this.sub.on('egpws_alert_discrete_word_2_2'),
+  );
   public readonly taws1Failed = Subject.create(false);
   public readonly taws2FailedSimvar = RegisteredSimVar.createBoolean('L:A32NX_TAWS_2_FAILED');
   public readonly taws2Failed = Subject.create(false);
@@ -4370,8 +4394,8 @@ export class FwsCore {
 
     const adrKnob = SimVar.GetSimVarValue('L:A32NX_AIR_DATA_SWITCHING_KNOB', 'enum');
     this.airKnob.set(adrKnob);
-    this.adr3UsedLeft.set(adrKnob === 0);
-    this.adr3UsedRight.set(adrKnob === 2);
+    this.adr3UsedLeft = adrKnob === 0;
+    this.adr3UsedRight = adrKnob === 2;
     const attKnob = SimVar.GetSimVarValue('L:A32NX_ATT_HDG_SWITCHING_KNOB', 'enum');
     this.attKnob.set(attKnob);
     this.ir3UsedLeft = attKnob === 0; //FIXME: Should come from the CDS.
@@ -4904,10 +4928,10 @@ export class FwsCore {
 
     // TCAS fault SYS 1
     const oneUsedLeftAdrInop =
-      (adr1Fault && !this.adr3UsedLeft.get()) ||
+      (adr1Fault && !this.adr3UsedLeft) ||
       (adr3Fault &&
         (adr3PressureAltitude.isFailureWarning() || adr3PressureAltitude.isNoComputedData()) &&
-        this.adr3UsedLeft.get());
+        this.adr3UsedLeft);
     const oneLeftUsedIrInop = (this.ir1Fault.get() && !this.ir3UsedLeft) || (this.ir3Fault.get() && this.ir3UsedLeft);
     const leftIrFaultyOrInAlign = this.ir3UsedLeft
       ? this.ir3Fault.get() || this.ir3Align.get()
@@ -4924,10 +4948,10 @@ export class FwsCore {
     const oneUsedRightAdrInop =
       (adr2Fault &&
         (adr2PressureAltitude.isFailureWarning() || adr2PressureAltitude.isNoComputedData()) &&
-        !this.adr3UsedRight.get()) ||
+        !this.adr3UsedRight) ||
       (adr3Fault &&
         (adr3PressureAltitude.isFailureWarning() || adr3PressureAltitude.isNoComputedData()) &&
-        this.adr3UsedRight.get());
+        this.adr3UsedRight);
     const oneUsedRightIrInop =
       (this.ir2Fault.get() && !this.ir3UsedRight) || (this.ir3Fault.get() && this.ir3UsedRight);
     const rightIrFaultyOrInAlign = this.ir3UsedRight
@@ -5985,7 +6009,22 @@ export class FwsCore {
     this.abnormalSensed.update();
     this.abnormalNonSensed.update();
     this.systemDisplayLogic.update(deltaTime);
-    this.autoCallouts.update(deltaTime, flightPhase, this.soundManager.getMaxReversePlayed(), ra1, ra2, ra3);
+    this.autoCallouts.update(
+      deltaTime,
+      flightPhase,
+      this.soundManager.getMaxReversePlayed(),
+      ra1,
+      ra2,
+      ra3,
+      this.egpwsAlert1DiscreteWord2.get(),
+      this.egpwsAlert2DiscreteWord2.get(),
+      this.adr1CorrectedAltLeft.get(),
+      this.adr3CorrectedAltLeft.get(),
+      this.adr2CorrectedAltRight.get(),
+      this.adr3CorrectedAltRight.get(),
+      this.adr3UsedLeft,
+      this.adr3UsedRight,
+    );
 
     if (this.debugDataToOisEnabled.get()) {
       this.updateOisDebugData();

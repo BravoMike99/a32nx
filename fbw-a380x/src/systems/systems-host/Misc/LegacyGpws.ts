@@ -1,9 +1,15 @@
 // Copyright (c) 2024-2026 FlyByWire Simulations
 // SPDX-License-Identifier: GPL-3.0
-import { Arinc429Register, Arinc429SignStatusMatrix, Arinc429Word, UpdateThrottler } from '@flybywiresim/fbw-sdk';
+import {
+  Arinc429Register,
+  Arinc429SignStatusMatrix,
+  Arinc429Word,
+  RegisteredSimVar,
+  UpdateThrottler,
+} from '@flybywiresim/fbw-sdk';
 import { FmgcFlightPhase } from '@shared/flightphase';
 import { LegacySoundManager, soundList } from './LegacySoundManager';
-import { EventBus, SimVarValueType } from '@microsoft/msfs-sdk';
+import { EventBus, SimVarValueType, Subject } from '@microsoft/msfs-sdk';
 
 type ModesType = {
   current: number;
@@ -17,6 +23,33 @@ type ModesType = {
  */
 export class LegacyGpws {
   private readonly updateThrottler = new UpdateThrottler(125); // has to be > 100 due to pulse nodes
+
+  private static readonly EgpwsAlert1DiscreteWord1SimVar = RegisteredSimVar.create(
+    'L:A32NX_EGPWS_ALERT_1_DISCRETE_WORD_1',
+    SimVarValueType.Enum,
+  );
+
+  private readonly epgwsAlert1DiscreteWord1Raw = Subject.create(0);
+
+  private static readonly EgpwsAlert1DiscreteWord2SimVar = RegisteredSimVar.create(
+    'L:A32NX_EGPWS_ALERT_1_DISCRETE_WORD_2',
+    SimVarValueType.Enum,
+  );
+
+  private readonly epgwsAlert1DiscreteWord2Raw = Subject.create(0);
+
+  private static readonly EgpwsAler2tDiscreteWord1SimVar = RegisteredSimVar.create(
+    'L:A32NX_EGPWS_ALERT_2_DISCRETE_WORD_1',
+    SimVarValueType.Enum,
+  );
+
+  private readonly epgwsAlert2DiscreteWord1Raw = Subject.create(0);
+
+  private static readonly EgpwsAler2DiscreteWord2SimVar = RegisteredSimVar.create(
+    'L:A32NX_EGPWS_ALERT_2_DISCRETE_WORD_2',
+    SimVarValueType.Enum,
+  );
+  private readonly epgwsAlert2DiscreteWord2Raw = Subject.create(0);
 
   minimumsState = 0;
 
@@ -117,7 +150,7 @@ export class LegacyGpws {
   }
 
   gpwsUpdateDiscreteWords() {
-    this.egpwsAlertDiscreteWord1.ssm = Arinc429SignStatusMatrix.NormalOperation;
+    this.egpwsAlertDiscreteWord1.ssm = Arinc429SignStatusMatrix.NormalOperation; // TODO split by system 1 and system 2 and set SSM accordingly.
     this.egpwsAlertDiscreteWord1.setBitValue(11, this.modes[0].current === 1);
     this.egpwsAlertDiscreteWord1.setBitValue(12, this.modes[0].current === 2);
     this.egpwsAlertDiscreteWord1.setBitValue(13, this.modes[1].current === 1);
@@ -127,60 +160,20 @@ export class LegacyGpws {
     this.egpwsAlertDiscreteWord1.setBitValue(16, this.modes[3].current === 2);
     this.egpwsAlertDiscreteWord1.setBitValue(17, this.modes[3].current === 3);
     this.egpwsAlertDiscreteWord1.setBitValue(18, this.modes[4].current === 1);
-    Arinc429Word.toSimVarValue(
-      'L:A32NX_EGPWS_ALERT_1_DISCRETE_WORD_1',
-      this.egpwsAlertDiscreteWord1.value,
-      this.egpwsAlertDiscreteWord1.ssm,
-    );
-    Arinc429Word.toSimVarValue(
-      'L:A32NX_EGPWS_ALERT_2_DISCRETE_WORD_1',
-      this.egpwsAlertDiscreteWord1.value,
-      this.egpwsAlertDiscreteWord1.ssm,
-    );
 
-    this.egpwsAlertDiscreteWord2.ssm = Arinc429SignStatusMatrix.NormalOperation;
-    this.egpwsAlertDiscreteWord2.setBitValue(14, false);
-    Arinc429Word.toSimVarValue(
-      'L:A32NX_EGPWS_ALERT_1_DISCRETE_WORD_2',
-      this.egpwsAlertDiscreteWord2.value,
-      this.egpwsAlertDiscreteWord2.ssm,
-    );
-    Arinc429Word.toSimVarValue(
-      'L:A32NX_EGPWS_ALERT_2_DISCRETE_WORD_2',
-      this.egpwsAlertDiscreteWord2.value,
-      this.egpwsAlertDiscreteWord2.ssm,
-    );
+    this.epgwsAlert1DiscreteWord1Raw.set(this.egpwsAlertDiscreteWord1.value);
+    this.epgwsAlert1DiscreteWord2Raw.set(this.egpwsAlertDiscreteWord2.value);
+    this.epgwsAlert2DiscreteWord1Raw.set(this.egpwsAlertDiscreteWord1.value);
+    this.epgwsAlert2DiscreteWord2Raw.set(this.egpwsAlertDiscreteWord2.value);
   }
 
   setGlideSlopeWarning(state: boolean) {
-    SimVar.SetSimVarValue('L:A32NX_GPWS_GS_Warning_Active', 'Bool', state ? 1 : 0); // Still need this for XML
     this.egpwsAlertDiscreteWord2.setBitValue(11, state);
-    Arinc429Word.toSimVarValue(
-      'L:A32NX_EGPWS_ALERT_1_DISCRETE_WORD_2',
-      this.egpwsAlertDiscreteWord2.value,
-      this.egpwsAlertDiscreteWord2.ssm,
-    );
-    Arinc429Word.toSimVarValue(
-      'L:A32NX_EGPWS_ALERT_2_DISCRETE_WORD_2',
-      this.egpwsAlertDiscreteWord2.value,
-      this.egpwsAlertDiscreteWord2.ssm,
-    );
   }
 
   setGpwsWarning(state: boolean) {
-    SimVar.SetSimVarValue('L:A32NX_GPWS_Warning_Active', 'Bool', state ? 1 : 0); // Still need this for XML
     this.egpwsAlertDiscreteWord2.setBitValue(12, state);
     this.egpwsAlertDiscreteWord2.setBitValue(13, state);
-    Arinc429Word.toSimVarValue(
-      'L:A32NX_EGPWS_ALERT_1_DISCRETE_WORD_2',
-      this.egpwsAlertDiscreteWord2.value,
-      this.egpwsAlertDiscreteWord2.ssm,
-    );
-    Arinc429Word.toSimVarValue(
-      'L:A32NX_EGPWS_ALERT_2_DISCRETE_WORD_2',
-      this.egpwsAlertDiscreteWord2.value,
-      this.egpwsAlertDiscreteWord2.ssm,
-    );
   }
 
   init() {
@@ -190,6 +183,20 @@ export class LegacyGpws {
     this.setGpwsWarning(false);
     this.egpwsAlertDiscreteWord1.ssm = Arinc429SignStatusMatrix.NormalOperation;
     this.egpwsAlertDiscreteWord1.setBitValue(12, false);
+    this.epgwsAlert1DiscreteWord1Raw.sub((v) => {
+      LegacyGpws.EgpwsAlert1DiscreteWord1SimVar.set(v);
+    });
+    this.epgwsAlert1DiscreteWord2Raw.sub((v) => {
+      LegacyGpws.EgpwsAlert1DiscreteWord2SimVar.set(v);
+    });
+
+    this.epgwsAlert2DiscreteWord1Raw.sub((v) => {
+      LegacyGpws.EgpwsAler2tDiscreteWord1SimVar.set(v);
+    });
+
+    this.epgwsAlert2DiscreteWord2Raw.sub((v) => {
+      LegacyGpws.EgpwsAler2DiscreteWord2SimVar.set(v);
+    });
   }
 
   update(deltaTime: number) {
@@ -201,7 +208,7 @@ export class LegacyGpws {
   }
 
   gpws(deltaTime: number) {
-    // EGPWS receives ADR1(or 3) only on SYS1, ADR2(or3) on SYS 2.
+    // TODO EGPWS receives ADR1(or 3) only on SYS1, ADR2(or3) on SYS 2.
     const radioAlt1 = Arinc429Word.fromSimVarValue('L:A32NX_RA_1_RADIO_ALTITUDE');
     const radioAlt2 = Arinc429Word.fromSimVarValue('L:A32NX_RA_2_RADIO_ALTITUDE');
     const radioAlt = radioAlt1.isFailureWarning() || radioAlt1.isNoComputedData() ? radioAlt2 : radioAlt1; //TODO support RA3 too

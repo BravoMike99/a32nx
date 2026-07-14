@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0
 import { FSComponent, LifecycleComponent, MappedSubject, Subject, VNode } from '@microsoft/msfs-sdk';
 
-import { Arinc429RegisterSubject, ArincEventBus } from '@flybywiresim/fbw-sdk';
-import { RopRowOansSimVars, FwcDataEvents, TawsDataEvents } from '../MsfsAvionicsCommon/providers';
+import { Arinc429RegisterSubject, ArincEventBus, TawsDataEvents } from '@flybywiresim/fbw-sdk';
+import { RopRowOansSimVars, FwcDataEvents } from '../MsfsAvionicsCommon/providers';
 
 interface AttitudeIndicatorWarningsProps {
   bus: ArincEventBus;

@@ -1,6 +1,5 @@
 import { DisplayComponent, FSComponent, MappedSubject, VNode } from '@microsoft/msfs-sdk';
-import { Arinc429RegisterSubject, ArincEventBus } from '@flybywiresim/fbw-sdk';
-import { TawsDataEvents } from '@flybywiresim/msfs-avionics-common';
+import { Arinc429RegisterSubject, ArincEventBus, TawsDataEvents } from '@flybywiresim/fbw-sdk';
 
 interface AttitudeIndicatorWarningsA380Props {
   bus: ArincEventBus;
