@@ -11,15 +11,15 @@ import {
   ClockPublisher,
   Subject,
 } from '@microsoft/msfs-sdk';
-import { FmcService } from 'instruments/src/MFD/FMC/FmcService';
-import { FmcServiceInterface } from 'instruments/src/MFD/FMC/FmcServiceInterface';
+import { FmcService } from './FMC/FmcService';
+import { FmcServiceInterface } from './FMC/FmcServiceInterface';
 import { MfdComponent } from './MFD';
 import { MfdSimvarPublisher } from './shared/MFDSimvarPublisher';
-import { FailuresConsumer, RaBusPublisher } from '@flybywiresim/fbw-sdk';
+import { EnginePublisher, FailuresConsumer, RaBusPublisher } from '@flybywiresim/fbw-sdk';
 import { A380Failure } from '@failures';
 import { FGDataPublisher } from '../MsfsAvionicsCommon/providers/FGDataPublisher';
 import { ResetPanelSimvarPublisher } from '../MsfsAvionicsCommon/providers/ResetPanelPublisher';
-import { FmsMessagePublisher } from 'instruments/src/MsfsAvionicsCommon/providers/FmsMessagePublisher';
+import { FmsMessagePublisher } from '../MsfsAvionicsCommon/providers/FmsMessagePublisher';
 import { FqmsBusPublisher } from '@shared/publishers/FqmsBusPublisher';
 import { AtcDatalinkSystem } from './ATCCOM/AtcDatalinkSystem';
 import { dataStatusUri } from './shared/utils';
@@ -68,6 +68,7 @@ class MfdInstrument implements FsInstrument {
     this.backplane.addPublisher('resetPanel', this.resetPanelPublisher);
     this.backplane.addPublisher('radioAltimeter', this.radioAltimeterPublisher);
     this.backplane.addPublisher('fqms', this.fqmsPublisher);
+    this.backplane.addPublisher('Engine', new EnginePublisher(this.bus));
 
     this.fmcService = new FmcService(
       this.bus,

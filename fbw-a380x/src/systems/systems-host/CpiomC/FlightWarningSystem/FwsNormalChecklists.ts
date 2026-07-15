@@ -10,26 +10,31 @@ import {
   SubscribableMapFunctions,
   Subscription,
 } from '@microsoft/msfs-sdk';
-import { ChecklistState, FwsEvents } from 'instruments/src/MsfsAvionicsCommon/providers/FwsPublisher';
-import { FwsCore } from 'systems-host/CpiomC/FlightWarningSystem/FwsCore';
+// FIXME should not import from instruments
+import { ChecklistState, FwsEvents } from '../../../instruments/src/MsfsAvionicsCommon/providers/FwsPublisher';
+// FIXME circular import
+import { FwsCore } from './FwsCore';
+// FIXME should not import from instruments
 import {
   CHECKLIST_OVERVIEW_ID,
   deferredProcedureIds,
   DEPARTURE_CHANGE_NORMAL_CHECKLIST_ID,
   DEPATURE_CHANGE_NORMAL_CHECKLIST_ID_TEXT,
   EcamNormalProcedures,
-} from 'instruments/src/MsfsAvionicsCommon/EcamMessages/NormalProcedures';
+} from '../../../instruments/src/MsfsAvionicsCommon/EcamMessages/NormalProcedures';
+// FIXME should not import from instruments
 import {
   DeferredProcedureType,
   EcamDeferredProcedures,
   NormalProcedure,
   WD_NUM_LINES,
-} from 'instruments/src/MsfsAvionicsCommon/EcamMessages';
+} from '../../../instruments/src/MsfsAvionicsCommon/EcamMessages';
+// FIXME should not import from instruments
 import {
   ProcedureLinesGenerator,
   ProcedureType,
   SPECIAL_INDEX_DEFERRED_PAGE_CLEAR,
-} from 'instruments/src/MsfsAvionicsCommon/EcamMessages/ProcedureLinesGenerator';
+} from '../../../instruments/src/MsfsAvionicsCommon/EcamMessages/ProcedureLinesGenerator';
 import { NXLogicMemoryNode, RegisteredSimVar } from '@flybywiresim/fbw-sdk';
 import { FwcFlightPhase } from './FwsFlightPhases';
 
@@ -241,10 +246,10 @@ export class FwsNormalChecklists {
                 },
                 (newState) => {
                   // Handle procedure activation/deactivation
-                  const whichItemsActive = this.fws.abnormalSensed.ewdDeferredProcs[proc.id].whichItemsActive;
+                  const whichItemsActive = this.fws.allEwdDeferredProcs[proc.id].whichItemsActive;
                   const deferredItemsActive = whichItemsActive
                     ? whichItemsActive()
-                    : Array(this.fws.abnormalSensed.ewdDeferredProcs[proc.id].whichItemsChecked().length).fill(
+                    : Array(this.fws.allEwdDeferredProcs[proc.id].whichItemsChecked().length).fill(
                         newState.procedureActivated,
                       );
                   newState.itemsActive = deferredItemsActive;
