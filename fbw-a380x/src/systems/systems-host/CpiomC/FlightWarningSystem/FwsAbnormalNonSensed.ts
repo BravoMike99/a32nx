@@ -367,7 +367,7 @@ export class FwsAbnormalNonSensed {
         false,
         false,
         false,
-        this.fws.apuStartSwitch.get(),
+        this.fws.apuStartSwitch,
         false,
         false,
         this.fws.apuAvailAndApuBleedOn.get(),
@@ -468,8 +468,8 @@ export class FwsAbnormalNonSensed {
         this.fws.elecGalleyOff.get(),
         this.fws.elecPaxSysOff.get(),
         false,
-        this.fws.flapsHandle.get() > 0,
-        this.fws.gearLeverPos.get(),
+        !this.fws.flapLeverZero.get(),
+        this.fws.gearSelectedUp.get(),
         false,
         false,
         false,
@@ -588,7 +588,7 @@ export class FwsAbnormalNonSensed {
       notActiveWhenItemActive: [],
       whichItemsToShow: () => [true, true, true, true, true, true, true, true, true, true],
       whichItemsChecked: () => [
-        this.fws.seatBelt.get() === 1,
+        this.fws.seatBeltSwitchOn.get(),
         false, // TODO add logic for if no more restrictive speed limitation
         false,
         false,
@@ -678,7 +678,7 @@ export class FwsAbnormalNonSensed {
           isGpsBelow25k, // [15]
           isGpsBelow25k, // [16]
           isGpsBelow25k, // [17]
-          isGpsBelow25k && this.fws.flapsHandle.get() === 4, // [18]
+          isGpsBelow25k && this.fws.flapLeverFull.get(), // [18]
           true, // [19]
           true, // [20]
           true, // [21]
@@ -752,7 +752,7 @@ export class FwsAbnormalNonSensed {
         false, // [15]
         false, // [16]
         false, // [17]
-        this.fws.flapsHandle.get() === 3, // [18]
+        this.fws.flapLever3.get(), // [18]
         false, // [19]
         false, // [20]
         false, // [21]

@@ -1917,7 +1917,7 @@ export class FwsAbnormalSensed {
       whichItemsChecked: () => [
         this.fws.fireButtonAPU.get(),
         this.fws.apuAgentDischarged.get(),
-        this.fws.apuMasterSwitch.get() === 0,
+        !this.fws.apuMasterSwitch,
       ],
       whichItemsTimer: () => [undefined, this.fws.apuFireAgent1Discharge10SecondsTimestamp.get(), undefined],
       failure: 3,
@@ -2462,7 +2462,7 @@ export class FwsAbnormalSensed {
       ],
       whichItemsChecked: () => [
         false,
-        this.fws.gearLeverPos.get(),
+        this.fws.gearSelectedUp.get(),
         false,
         false,
         false,
@@ -2475,7 +2475,7 @@ export class FwsAbnormalSensed {
         false,
         false,
         !this.fws.evacCommand.get(),
-        this.fws.apuMasterSwitch.get() === 0,
+        !this.fws.apuMasterSwitch,
         this.fws.allBatteriesOff.get(),
         false,
         false,
@@ -3560,6 +3560,20 @@ export class FwsAbnormalSensed {
       sysPage: SdPages.None,
     },
     // ATA 31 - DISPLAY/RECORDING
+
+    // Custom ecam database rejected
+    314800001: {
+      flightPhaseInhib: [],
+      simVarIsActive: this.fws.fwsCustomEcamDatabaseRejectedEcam,
+      whichItemsToShow: () => [
+        this.fws.fwsCustomEcamDatabaseRejectedByFws1,
+        this.fws.fwsCustomEcamDatabaseRejectedByFws2,
+        this.fws.fwsCustomEcamDatabaseRejectedByBothFws,
+      ],
+      whichItemsChecked: () => [false, false, false],
+      sysPage: SdPages.None,
+      failure: -1,
+    },
     314800006: {
       // AUDIO FUNCTION LOST
       flightPhaseInhib: [3, 4, 5, 6, 7, 10, 11],
@@ -3608,6 +3622,7 @@ export class FwsAbnormalSensed {
       sysPage: SdPages.None,
       redundLoss: () => ['310300003'],
     },
+
     // ATA 32 - LANDING GEAR & BRAKES
     320800008: {
       // BRAKES A_SKID OFF
@@ -4618,7 +4633,7 @@ export class FwsAbnormalSensed {
       ],
       whichItemsChecked: () => [
         this.fws.tcasTaOnly.get(),
-        this.fws.gearLeverPos.get(),
+        this.fws.gearSelectedUp.get(),
         false,
         this.fws.crossFeed1ValveOpen.get(),
         false,
@@ -4647,7 +4662,7 @@ export class FwsAbnormalSensed {
       ],
       whichItemsChecked: () => [
         this.fws.tcasTaOnly.get(),
-        this.fws.gearLeverPos.get(),
+        this.fws.gearSelectedUp.get(),
         false,
         this.fws.crossFeed2ValveOpen.get(),
         false,
@@ -4677,7 +4692,7 @@ export class FwsAbnormalSensed {
       ],
       whichItemsChecked: () => [
         this.fws.tcasTaOnly.get(),
-        this.fws.gearLeverPos.get(),
+        this.fws.gearSelectedUp.get(),
         false,
         this.fws.crossFeed3ValveOpen.get(),
         false,
@@ -4706,7 +4721,7 @@ export class FwsAbnormalSensed {
       ],
       whichItemsChecked: () => [
         this.fws.tcasTaOnly.get(),
-        this.fws.gearLeverPos.get(),
+        this.fws.gearSelectedUp.get(),
         false,
         this.fws.crossFeed4ValveOpen.get(),
         false,

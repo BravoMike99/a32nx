@@ -136,11 +136,7 @@ export class FwsMemos {
     '0000180': {
       // APU BLEED
       flightPhaseInhib: [],
-      simVarIsActive: MappedSubject.create(
-        ([apuAvail, apuBleedValveOpen]) => apuAvail && apuBleedValveOpen,
-        this.fws.apuAvail,
-        this.fws.apuBleedValveOpen,
-      ),
+      simVarIsActive: this.fws.apuAvailAndApuBleedOn,
       whichCodeToReturn: () => [0],
       codesToReturn: ['000018001'],
       memoInhibit: () => false,
@@ -604,10 +600,8 @@ export class FwsMemos {
         0,
         this.fws.seatBeltSwitchOn.get() ? 2 : 1,
         this.fws.spoilersArmed.get() ? 4 : 3,
-        this.fws.slatFlapSelectionS18F10 || this.fws.slatFlapSelectionS22F15 || this.fws.slatFlapSelectionS22F20
-          ? 6
-          : 5,
-        this.fws.autoBrake.get() === 6 ? 8 : 7,
+        !this.fws.flapsNotToMemo ? 6 : 5,
+        this.fws.autoBrakeRto ? 8 : 7,
         this.fws.toConfigNormal.get() ? 10 : 9,
       ],
       codesToReturn: [

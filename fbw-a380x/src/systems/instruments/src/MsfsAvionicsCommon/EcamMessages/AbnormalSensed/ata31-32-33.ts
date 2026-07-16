@@ -123,7 +123,26 @@ export const EcamAbnormalSensedAta313233: { [n: number]: AbnormalProcedure } = {
   314800001: {
     title: '\x1b<4m\x1b4mFWS\x1bm AIRLINE CUSTOMIZATION REJECTED',
     sensed: true,
-    items: [],
+    items: [
+      {
+        name: 'FWS 1 DATABASE REJECTED',
+        level: 1,
+        sensed: true,
+        style: ChecklistLineStyle.Amber,
+      },
+      {
+        name: 'FWS 2 DATABASE REJECTED',
+        level: 1,
+        sensed: true,
+        style: ChecklistLineStyle.Amber,
+      },
+      {
+        name: 'FWS 1 + 2 DATABASE REJECTED',
+        level: 1,
+        sensed: true,
+        style: ChecklistLineStyle.Amber,
+      },
+    ],
   },
   314800003: {
     title: '\x1b<4m\x1b4mFWS\x1bm FWS 1+2 & FCDC 1+2 FAULT',

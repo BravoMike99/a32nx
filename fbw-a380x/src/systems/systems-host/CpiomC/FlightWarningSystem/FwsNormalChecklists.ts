@@ -37,6 +37,13 @@ import {
 } from '../../../instruments/src/MsfsAvionicsCommon/EcamMessages/ProcedureLinesGenerator';
 import { NXLogicMemoryNode, RegisteredSimVar } from '@flybywiresim/fbw-sdk';
 import { FwcFlightPhase } from './FwsFlightPhases';
+import {
+  A380XNormalChecklistDefinition,
+  A380XNormalChecklistDefinitionItemAction,
+  A380xNormalChecklistItemType,
+  A380XNormalChecklistSensedItem,
+  isActionItem,
+} from '@shared/A380XCustomEcamDefinition';
 
 export interface NormalEclSensedItems {
   /** Returns a boolean vector (same length as number of items). If true, item is marked as completed. If null, it's a non-sensed item */
@@ -65,8 +72,8 @@ export class FwsNormalChecklists {
         false,
         this.fws.seatBeltSwitchOn.get(),
         this.fws.spoilersArmed.get(),
-        this.fws.slatFlapSelectionS18F10 || this.fws.slatFlapSelectionS22F15 || this.fws.slatFlapSelectionS22F20,
-        this.fws.autoBrake.get() === 6,
+        !this.fws.flapsNotToMemo,
+        this.fws.autoBrakeRto,
         this.fws.toConfigNormal.get(),
       ],
     },
@@ -101,15 +108,7 @@ export class FwsNormalChecklists {
       ],
     },
     1000013: {
-      whichItemsChecked: () => [
-        null,
-        !this.fws.engine1Master.get() &&
-          !this.fws.engine2Master.get() &&
-          !this.fws.engine3Master.get() &&
-          !this.fws.engine4Master.get(),
-        null,
-        this.fws.allFuelPumpsOff.get(),
-      ],
+      whichItemsChecked: () => [null, this.fws.allEnginesMastersOff.get(), null, this.fws.allFuelPumpsOff.get()],
     },
     1000014: {
       whichItemsChecked: () => [
@@ -168,6 +167,8 @@ export class FwsNormalChecklists {
   );
 
   private readonly crewOxygenButtonPushed = RegisteredSimVar.createBoolean('L:PUSH_OVHD_OXYGEN_CREW');
+
+  private readonly rudderTrimNeutralForTakeoff = this.fws.rudderTrimPosition.map((v) => v < 0.35);
 
   private withinDepartureChangeFlightPhaseInhib = true;
 
@@ -677,5 +678,76 @@ export class FwsNormalChecklists {
       }),
     );
     this.pub.pub('fws_normal_checklists', flattened, true);
+  }
+
+  private parseCheckListFromCustomDatabase(checklist: A380XNormalChecklistDefinition): NormalEclSensedItems[] {
+    const items: NormalEclSensedItems[] = [];
+    for (let i = 0; i < checklist.items.length; i++) {
+      const item = checklist.items[i];
+      if (isActionItem(item)) {
+        items.push({ whichItemsChecked: this.mapCustomSensedItemToFwsLogic(item) });
+      }
+    }
+  }
+
+  private mapCustomSensedItemToFwsLogic(action: A380XNormalChecklistDefinitionItemAction): () => boolean | null {
+    if (action.sensedItem === undefined) {
+      return () => null;
+    } else {
+      switch (action.sensedItem) {
+        case A380XNormalChecklistSensedItem.SEATBELTS_ON:
+          return () => this.fws.seatBeltSwitchOn.get();
+        case A380XNormalChecklistSensedItem.SEATBELTS_OFF:
+          return () => !this.fws.seatBeltSwitchOn.get();
+        case A380XNormalChecklistSensedItem.SIGNS_ON:
+          return () => this.fws.signsOn.get();
+        case A380XNormalChecklistSensedItem.SIGNS_OFF:
+          return () => !this.fws.signsOn.get();
+        case A380XNormalChecklistSensedItem.SIGNS_ON_OR_AUTO:
+          return () => this.fws.signsOnOrAuto.get();
+        case A380XNormalChecklistSensedItem.SPOILERS_ARMED:
+          return () => this.fws.spoilersArmed.get();
+        case A380XNormalChecklistSensedItem.SPOILERS_RETRACTED:
+          return () => !this.fws.spoilersArmed.get() && !this.fws.speedBrakeCommand.get();
+        case A380XNormalChecklistSensedItem.AUTOBRAKE_RTO:
+          return () => this.fws.autoBrakeRto;
+        case A380XNormalChecklistSensedItem.FLAPS_TO:
+          return () => !this.fws.flapsNotToMemo;
+        case A380XNormalChecklistSensedItem.FLAPS_LDG:
+          return () => this.fws.flapsLeverInLandingConfiguration.get();
+        case A380XNormalChecklistSensedItem.FLAPS_RETRACTED:
+          return () => this.fws.flapLeverZero.get();
+        case A380XNormalChecklistSensedItem.FUEL_PUMPS_OFF:
+          return () => this.fws.allFuelPumpsOff.get();
+        case A380XNormalChecklistSensedItem.ADIRS_NAV:
+          return () => this.fws.ir1InNav && this.fws.ir2InNav && this.fws.ir3InNav;
+        case A380XNormalChecklistSensedItem.BEACON_ON:
+          return () => this.beaconLightSwitch.get();
+        case A380XNormalChecklistSensedItem.APU_START:
+          return () => this.fws.apuMasterSwitch && this.fws.apuStartSwitch;
+        case A380XNormalChecklistSensedItem.APU_BLEED_OFF:
+          return () => !this.fws.apuBleedPbOn.get();
+        case A380XNormalChecklistSensedItem.APU_MASTER_OFF:
+          return () => !this.fws.apuMasterSwitch;
+        case A380XNormalChecklistSensedItem.PACKS_ON:
+          return () => this.fws.pack1On.get() && this.fws.pack2On.get();
+        case A380XNormalChecklistSensedItem.EMER_EXIT_LIGHTS_OFF:
+          return () => this.emergencyExitLightSwitch.get() == 2;
+        case A380XNormalChecklistSensedItem.OXYGEN_OFF:
+          return () => this.crewOxygenButtonPushed.get();
+        case A380XNormalChecklistSensedItem.ENGINES_OFF:
+          return () => this.fws.allEnginesMastersOff.get();
+        case A380XNormalChecklistSensedItem.RUDDER_TRIM_NEUTRAL:
+          return () => this.rudderTrimNeutralForTakeoff.get();
+        case A380XNormalChecklistSensedItem.ECAM_STS_NORMAL:
+          return () => this.fws.ecamStatusNormal.get();
+        case A380XNormalChecklistSensedItem.ECAM_STS_NOT_NORMAL:
+          return () => !this.fws.ecamStatusNormal.get();
+        case A380XNormalChecklistSensedItem.GEAR_UP:
+          return () => !this.fws.gearSelectedUp.get();
+        case A380XNormalChecklistSensedItem.GEAR_DOWN:
+          return () => this.fws.isAllGearDownlocked;
+      }
+    }
   }
 }

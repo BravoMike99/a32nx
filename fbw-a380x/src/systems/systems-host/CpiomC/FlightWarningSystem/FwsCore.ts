@@ -92,6 +92,7 @@ import {
 // FIXME should not import from instruments
 import { FcdcSimvars } from '@shared/publishers/FcdcPublisher';
 import { FwsAutoCallouts } from './FwsAutoCallouts';
+import { A380XCustomEcamDefinition, A380XNormalChecklistFlightPhase } from '@shared/A380XCustomEcamDefinition';
 
 export function xor(a: boolean, b: boolean): boolean {
   return !!((a ? 1 : 0) ^ (b ? 1 : 0));
@@ -362,16 +363,36 @@ export class FwsCore {
 
   private readonly noMobileSwitchRegisteredSimvar = RegisteredSimVar.create(
     'L:XMLVAR_SWITCH_OVHD_INTLT_NOSMOKING_Position',
-    SimVarValueType.Number,
+    SimVarValueType.Enum,
   );
 
   public readonly noMobileSwitchOn = Subject.create(false);
 
+  public readonly noMobileSwitchAuto = Subject.create(false);
+
   public readonly predWSOn = Subject.create(false);
 
-  private readonly seatBeltSignRegisteredSimvar = RegisteredSimVar.createBoolean('A:CABIN SEATBELTS ALERT SWITCH');
+  private readonly seatBeltSignRegisteredSimvar = RegisteredSimVar.create(
+    'A:CABIN SEATBELTS ALERT SWITCH',
+    SimVarValueType.Enum,
+  );
 
   public readonly seatBeltSwitchOn = Subject.create(false);
+
+  public readonly seatBeltSignAuto = Subject.create(false);
+
+  public readonly signsOn = MappedSubject.create(
+    SubscribableMapFunctions.or(),
+    this.seatBeltSwitchOn,
+    this.noMobileSwitchOn,
+  );
+
+  public readonly signsOnOrAuto = MappedSubject.create(
+    SubscribableMapFunctions.or(),
+    this.signsOn,
+    this.seatBeltSignAuto,
+    this.noMobileSwitchAuto,
+  );
 
   public readonly strobeLightsOn = Subject.create(0);
 
@@ -1071,11 +1092,13 @@ export class FwsCore {
 
   public slatFlapSelectionS0F0 = false;
 
-  public slatFlapSelectionS18F10 = false;
+  private slatFlapSelectionS18F10 = false;
 
-  public slatFlapSelectionS22F15 = false;
+  private slatFlapSelectionS22F15 = false;
 
-  public slatFlapSelectionS22F20 = false;
+  private slatFlapSelectionS22F20 = false;
+
+  public slatFlapTakeoff = false;
 
   public readonly flapsInferiorTo8Deg = Subject.create(false);
 
@@ -1091,7 +1114,7 @@ export class FwsCore {
 
   public readonly flapsNotTo = Subject.create(false);
 
-  public readonly flapsNotToMemo = Subject.create(false);
+  public flapsNotToMemo = false;
 
   public readonly flapConfigSr = new NXLogicMemoryNode(true);
 
@@ -1546,6 +1569,18 @@ export class FwsCore {
   /** If one of the ADR's CAS is above V1 - 4kts, confirm for 0.3s */
   public readonly v1SpeedConfirmNode = new NXLogicConfirmNode(0.3);
 
+  private readonly fwsCustomEcamDatabaseRejected = Subject.create(false);
+
+  public readonly fwsCustomEcamDatabaseRejectedEcam = MappedSubject.create(
+    ([rejected, flightPhase]) => rejected && flightPhase === FwcFlightPhase.ElecPwr,
+    this.fwsCustomEcamDatabaseRejected,
+    this.flightPhase,
+  );
+
+  public fwsCustomEcamDatabaseRejectedByFws1 = false;
+  public fwsCustomEcamDatabaseRejectedByFws2 = false;
+  public fwsCustomEcamDatabaseRejectedByBothFws = false;
+
   /* LANDING GEAR AND LIGHTS */
 
   public readonly aircraftOnGround = Subject.create(false);
@@ -1622,7 +1657,7 @@ export class FwsCore {
 
   private onGroundImmediate = false;
 
-  public readonly gearLeverPos = Subject.create(false);
+  public readonly gearSelectedUp = Subject.create(false);
 
   private readonly ir1GroundSpeed = Arinc429LocalVarConsumerSubject.create(this.sub.on('ir_ground_speed_1'));
   private readonly ir2GroundSpeed = Arinc429LocalVarConsumerSubject.create(this.sub.on('ir_ground_speed_2'));
@@ -1749,6 +1784,10 @@ export class FwsCore {
     this.ir2Fault,
     this.ir3Fault,
   );
+
+  public ir1InNav = false;
+  public ir2InNav = false;
+  public ir3InNav = false;
 
   public readonly irExcessMotion = Subject.create(false);
 
@@ -1905,6 +1944,14 @@ export class FwsCore {
   public readonly engine2Master = ConsumerSubject.create(this.sub.on('engine_master_2'), false);
   public readonly engine3Master = ConsumerSubject.create(this.sub.on('engine_master_3'), false);
   public readonly engine4Master = ConsumerSubject.create(this.sub.on('engine_master_4'), false);
+
+  public readonly allEnginesMastersOff = MappedSubject.create(
+    SubscribableMapFunctions.nor(),
+    this.engine1Master,
+    this.engine2Master,
+    this.engine3Master,
+    this.engine4Master,
+  );
 
   private readonly engine1masterOnPulseNode = new NXLogicPulseNode();
   private readonly engine2masterOnPulseNode = new NXLogicPulseNode();
@@ -2070,20 +2117,18 @@ export class FwsCore {
 
   public readonly engine2Generator = Subject.create(false);
 
-  public readonly emergencyElectricGeneratorPotential = Subject.create(0);
-
-  public readonly emergencyGeneratorOn = this.emergencyElectricGeneratorPotential.map((it) => it > 0);
+  public readonly emergencyGeneratorOn = Subject.create(false);
 
   public readonly elecEmerConfig = Subject.create(false);
 
-  public readonly apuMasterSwitch = Subject.create(0);
+  public apuMasterSwitch = false;
 
-  public readonly apuStartSwitchSimvar = RegisteredSimVar.createBoolean(
+  private readonly apuStartSwitchSimvar = RegisteredSimVar.createBoolean(
     'L:A32NX_OVHD_APU_START_PB_IS_ON',
     SimVarValueType.Bool,
   );
 
-  public readonly apuStartSwitch = Subject.create(false);
+  public apuStartSwitch = false;
 
   public readonly apuAvail = Subject.create(false);
 
@@ -2095,6 +2140,10 @@ export class FwsCore {
 
   public readonly radioHeight3 = Arinc429Register.empty();
 
+  public readonly memoSeatbeltsOn = Subject.create(false);
+
+  public readonly memoFlapsBeforeSpoilers = Subject.create(false);
+
   public readonly toMemo = Subject.create(0);
 
   public readonly ldgMemo = Subject.create(0);
@@ -2105,7 +2154,7 @@ export class FwsCore {
     this.ldgMemo,
   );
 
-  public readonly autoBrake = Subject.create(0);
+  public autoBrakeRto = false;
 
   public readonly engSelectorPosition = Subject.create(0);
 
@@ -3009,6 +3058,22 @@ export class FwsCore {
         !SimVar.GetSimVarValue('L:A32NX_PUSH_TRUE_REF', 'bool'),
     );
 
+    this.ir1InNav =
+      this.ir1MaintWord.bitValueOr(3, false) &&
+      !this.ir1MaintWord.bitValue(16) &&
+      !this.ir1MaintWord.bitValue(17) &&
+      !this.ir1MaintWord.bitValue(18);
+    this.ir2InNav =
+      this.ir2MaintWord.bitValueOr(3, false) &&
+      !this.ir2MaintWord.bitValue(16) &&
+      !this.ir2MaintWord.bitValue(17) &&
+      !this.ir2MaintWord.bitValue(18);
+    this.ir3InNav =
+      this.ir3MaintWord.bitValueOr(3, false) &&
+      !this.ir3MaintWord.bitValue(16) &&
+      !this.ir3MaintWord.bitValue(17) &&
+      !this.ir3MaintWord.bitValue(18);
+
     /* ELECTRICAL acquisition */
     this.dcESSBusPowered.set(SimVar.GetSimVarValue('L:A32NX_ELEC_DC_ESS_BUS_IS_POWERED', 'bool') > 0);
     this.dc1BusPowered.set(SimVar.GetSimVarValue('L:A32NX_ELEC_DC_1_BUS_IS_POWERED', 'bool') > 0);
@@ -3107,12 +3172,12 @@ export class FwsCore {
       this.engine3AboveIdle.get() ||
       this.engine4AboveIdle.get();
 
-    this.engine1Generator.set(SimVar.GetSimVarValue('L:A32NX_ELEC_ENG_GEN_1_POTENTIAL_NORMAL', 'bool'));
-    this.engine2Generator.set(SimVar.GetSimVarValue('L:A32NX_ELEC_ENG_GEN_2_POTENTIAL_NORMAL', 'bool'));
-    this.emergencyElectricGeneratorPotential.set(SimVar.GetSimVarValue('L:A32NX_ELEC_EMER_GEN_POTENTIAL', 'number'));
+    this.engine1Generator.set(SimVar.GetSimVarValue('L:A32NX_ELEC_ENG_GEN_1_POTENTIAL_NORMAL', 'bool') > 0);
+    this.engine2Generator.set(SimVar.GetSimVarValue('L:A32NX_ELEC_ENG_GEN_2_POTENTIAL_NORMAL', 'bool') > 0);
+    this.emergencyGeneratorOn.set(SimVar.GetSimVarValue('L:A32NX_ELEC_EMER_GEN_POTENTIAL', 'number') > 0);
 
-    this.apuMasterSwitch.set(SimVar.GetSimVarValue('L:A32NX_OVHD_APU_MASTER_SW_PB_IS_ON', 'bool'));
-    this.apuStartSwitch.set(this.apuStartSwitchSimvar.get());
+    this.apuMasterSwitch = SimVar.GetSimVarValue('L:A32NX_OVHD_APU_MASTER_SW_PB_IS_ON', 'bool') > 0;
+    this.apuStartSwitch = this.apuStartSwitchSimvar.get();
 
     this.apuAvail.set(SimVar.GetSimVarValue('L:A32NX_OVHD_APU_START_PB_IS_AVAILABLE', 'bool') > 0);
     this.apuBleedValveOpen.set(SimVar.GetSimVarValue('L:A32NX_APU_BLEED_AIR_VALVE_OPEN', 'bool') > 0);
@@ -3143,7 +3208,7 @@ export class FwsCore {
 
     this.toMemo.set(SimVar.GetSimVarValue('L:A32NX_FWC_TOMEMO', 'bool'));
 
-    this.autoBrake.set(SimVar.GetSimVarValue('L:A32NX_AUTOBRAKES_ARMED_MODE', 'enum'));
+    this.autoBrakeRto = SimVar.GetSimVarValue('L:A32NX_AUTOBRAKES_ARMED_MODE', 'enum') === 6;
 
     this.ldgMemo.set(SimVar.GetSimVarValue('L:A32NX_FWC_LDGMEMO', 'bool'));
 
@@ -3580,7 +3645,7 @@ export class FwsCore {
       this.dcESSBusPowered.get() && SimVar.GetSimVarValue('L:A32NX_LGCIU_1_LEFT_GEAR_COMPRESSED', 'bool') > 0;
     const leftCompressedHardwireLgciu2 =
       this.dc2BusPowered.get() && SimVar.GetSimVarValue('L:A32NX_LGCIU_2_LEFT_GEAR_COMPRESSED', 'bool') > 0;
-    this.gearLeverPos.set(SimVar.GetSimVarValue('GEAR HANDLE POSITION', 'bool'));
+    this.gearSelectedUp.set(SimVar.GetSimVarValue('GEAR HANDLE POSITION', 'bool'));
 
     // General logic
     const mainGearDownlocked =
@@ -4510,9 +4575,13 @@ export class FwsCore {
     this.ir3UsedRight = attKnob === 2;
     this.compMesgCount.set(SimVar.GetSimVarValue('L:A32NX_COMPANY_MSG_COUNT', 'number'));
     this.fmsSwitchingKnob.set(SimVar.GetSimVarValue('L:A32NX_FMS_SWITCHING_KNOB', 'enum'));
-    this.seatBeltSwitchOn.set(this.seatBeltSignRegisteredSimvar.get());
+    const seatBeltSwitchPosition = this.seatBeltSignRegisteredSimvar.get();
+    this.seatBeltSwitchOn.set(seatBeltSwitchPosition === 0);
+    this.seatBeltSignAuto.set(seatBeltSwitchPosition === 1);
     this.ndXfrKnob.set(SimVar.GetSimVarValue('L:A32NX_ECAM_ND_XFR_SWITCHING_KNOB', 'enum'));
-    this.noMobileSwitchOn.set(this.noMobileSwitchRegisteredSimvar.get() === 0);
+    const noMobileSwitchPosition = this.noMobileSwitchRegisteredSimvar.get();
+    this.noMobileSwitchOn.set(noMobileSwitchPosition === 0);
+    this.noMobileSwitchAuto.set(noMobileSwitchPosition === 1);
     this.strobeLightsOn.set(SimVar.GetSimVarValue('L:LIGHTING_STROBE_0', 'Bool'));
 
     this.voiceVhf3.set(this.rmp3ActiveMode.get() !== FrequencyMode.Data);
@@ -4705,7 +4774,7 @@ export class FwsCore {
       !flapsNotInToPos || phase6 || this.flightPhase.get() === 7,
     );
     this.flapsNotTo.set(this.flightPhase1211.get() && flapsNotInToPos);
-    this.flapsNotToMemo.set(this.flapConfigSr.read() || this.flapsNotTo.get());
+    this.flapsNotToMemo = this.flapConfigSr.read() || this.flapsNotTo.get();
     this.flapConfigAural.set(
       (this.toConfigTestHeldMin1s5Pulse.get() && this.flapsNotTo.get()) ||
         (this.flightPhase345.get() && flapsNotInToPos),
@@ -6117,16 +6186,8 @@ export class FwsCore {
     const sdStsShown = SimVar.GetSimVarValue('L:A32NX_ECAM_SD_CURRENT_PAGE_INDEX', SimVarValueType.Number) === 14;
     this.ecamEwdShowStsIndication.set(!this.ecamStatusNormal.get() && !sdStsShown);
 
-<<<<<<< HEAD
-    this.approachAutoDisplayQnhSetPulseNode.write(
-      Simplane.getPressureSelectedMode(Aircraft.A320_NEO) !== 'STD',
-      deltaTime,
-    );
-    this.approachAutoDisplaySlatsExtendedPulseNode.write(!this.flapLeverZero.get(), deltaTime);
-=======
     this.approachAutoDisplayQnhSetPulseNode.write(Simplane.getPressureSelectedMode(Aircraft.A320_NEO) !== 'STD');
-    this.approachAutoDisplaySlatsExtendedPulseNode.write(this.flapsHandle.get() > 0);
->>>>>>> upstream/master
+    this.approachAutoDisplaySlatsExtendedPulseNode.write(!this.flapLeverZero.get());
 
     const chimeRequested =
       (this.auralSingleChimePending || this.requestSingleChimeFromAThrOff) && !this.auralCrcActive.get();
@@ -6307,6 +6368,23 @@ export class FwsCore {
       vcsDiscreteWord.setFromSimVar(`L:A32NX_COND_CPIOM_B${index}_VCS_DISCRETE_WORD`);
       tcsDiscreteWord.setFromSimVar(`L:A32NX_COND_CPIOM_B${index}_TCS_DISCRETE_WORD`);
       cpcsDiscreteWord.setFromSimVar(`L:A32NX_COND_CPIOM_B${index}_CPCS_DISCRETE_WORD`);
+    }
+  }
+
+  private loadCustomEcamDatabase(database: string) {
+    try {
+      const parsedDatabase = JSON.parse(database) as A380XCustomEcamDefinition;
+      // Check if the database is valid.
+      if (!parsedDatabase) {
+      } else {
+        // For the database to be valid, the checklists must contain at least one for before takeoff, one for landing and one for descent.
+        if(parsedDatabase.normalChecklists && parsedDatabase.normalChecklists.filter((cl) => cl.flightPhase ===
+      A380XNormalChecklistFlightPhase.BEFORE_TAKEOFF || cl.flightPhase === A380XNormalChecklistFlightPhase.LANDING || cl.flightPhase === A380XNormalChecklistFlightPhase.DESCENT
+      ).length < 3)
+
+      }
+    } catch (error) {
+      this.fwsCustomEcamDatabaseRejectedByBothFws = true;
     }
   }
 
