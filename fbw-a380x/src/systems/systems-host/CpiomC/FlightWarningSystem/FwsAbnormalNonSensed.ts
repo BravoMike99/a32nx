@@ -213,14 +213,14 @@ export class FwsAbnormalNonSensed {
       whichItemsToShow: () => [
         this.fws.speedBrakeCommand.get(),
         this.fws.speedBrakeCommand.get(),
-        !this.fws.speedBrakeCommand.get() && !this.fws.spoilersArmed.get(),
-        this.fws.spoilersArmed.get(),
+        !this.fws.speedBrakeCommand.get() && !this.fws.spoilersArmed,
+        this.fws.spoilersArmed,
       ],
       whichItemsChecked: () => [false, false, false, false],
       failure: 1,
       auralWarning: Subject.create(FwcAuralWarning.None),
       sysPage: SdPages.None,
-      info: () => [!this.fws.speedBrakeCommand.get() && !this.fws.spoilersArmed.get() ? '270200002' : ''],
+      info: () => [!this.fws.speedBrakeCommand.get() && !this.fws.spoilersArmed ? '270200002' : ''],
     },
     270900004: {
       // F/CTL LDG WITH FLAPS LEVER JAMMED

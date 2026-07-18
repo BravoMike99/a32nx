@@ -92,7 +92,6 @@ import {
 // FIXME should not import from instruments
 import { FcdcSimvars } from '@shared/publishers/FcdcPublisher';
 import { FwsAutoCallouts } from './FwsAutoCallouts';
-import { A380XCustomEcamDefinition, A380XNormalChecklistFlightPhase } from '@shared/A380XCustomEcamDefinition';
 
 export function xor(a: boolean, b: boolean): boolean {
   return !!((a ? 1 : 0) ^ (b ? 1 : 0));
@@ -1012,7 +1011,7 @@ export class FwsCore {
 
   private readonly landingConfig3Selected = RegisteredSimVar.createBoolean('L:A32NX_SPEEDS_LANDING_CONF3');
 
-  public readonly flapsLeverInLandingConfiguration = Subject.create(false);
+  public flapsLeverInLandingConfiguration = false;
 
   public readonly lrElevFaultCondition = Subject.create(false);
 
@@ -1088,7 +1087,9 @@ export class FwsCore {
 
   public readonly speedBrakeCommand = Subject.create(false);
 
-  public readonly spoilersArmed = Subject.create(false);
+  public readonly spoilersArmedMemo = Subject.create(false);
+
+  public spoilersArmed = false;
 
   public slatFlapSelectionS0F0 = false;
 
@@ -2140,9 +2141,9 @@ export class FwsCore {
 
   public readonly radioHeight3 = Arinc429Register.empty();
 
-  public readonly memoSeatbeltsOn = Subject.create(false);
+  public readonly memoSeatbelsOnPin = true;
 
-  public readonly memoFlapsBeforeSpoilers = Subject.create(false);
+  public readonly memoGndSpoilersAsSplrs = false;
 
   public readonly toMemo = Subject.create(0);
 
@@ -3138,9 +3139,8 @@ export class FwsCore {
     this.flapLever3.set(sfccSystemStatusWordToUse.bitValueOr(20, false));
     this.flapLeverFull.set(sfccSystemStatusWordToUse.bitValueOr(21, false));
     const flap3Requested = this.landingConfig3Selected.get();
-    this.flapsLeverInLandingConfiguration.set(
-      (flap3Requested && this.flapLever3.get()) || (!flap3Requested && this.flapLeverFull.get()),
-    );
+    this.flapsLeverInLandingConfiguration =
+      (flap3Requested && this.flapLever3.get()) || (!flap3Requested && this.flapLeverFull.get());
 
     this.flapSys1Fault.set(this.slatFlapsSystem1StatusWord.bitValueOr(12, false));
     this.flapSys2Fault.set(this.slatFlapsSystem2StatusWord.bitValueOr(12, false));
@@ -4750,8 +4750,9 @@ export class FwsCore {
       (sec2GroundSpoilerFault || sec2SpeedbrakeLeverFault) &&
       (sec3GroundSpoilerFault || sec3SpeedbrakeLeverFault);
 
-    this.spoilersArmed.set(fcdc1DiscreteWord4.bitValueOr(27, false) || fcdc2DiscreteWord4.bitValueOr(27, false));
+    this.spoilersArmed = fcdc1DiscreteWord4.bitValueOr(27, false) || fcdc2DiscreteWord4.bitValueOr(27, false);
     this.speedBrakeCommand.set(fcdc1DiscreteWord4.bitValueOr(28, false) || fcdc2DiscreteWord4.bitValueOr(28, false));
+    this.spoilersArmedMemo.set(this.spoilersArmed); // TODO check no all spoilers inop;
 
     // TODO: add switching between SFCC_1 and SFCC_2
     const flapsPos = Arinc429Word.fromSimVarValue('L:A32NX_SFCC_1_FLAP_ACTUAL_POSITION_WORD');
@@ -6368,23 +6369,6 @@ export class FwsCore {
       vcsDiscreteWord.setFromSimVar(`L:A32NX_COND_CPIOM_B${index}_VCS_DISCRETE_WORD`);
       tcsDiscreteWord.setFromSimVar(`L:A32NX_COND_CPIOM_B${index}_TCS_DISCRETE_WORD`);
       cpcsDiscreteWord.setFromSimVar(`L:A32NX_COND_CPIOM_B${index}_CPCS_DISCRETE_WORD`);
-    }
-  }
-
-  private loadCustomEcamDatabase(database: string) {
-    try {
-      const parsedDatabase = JSON.parse(database) as A380XCustomEcamDefinition;
-      // Check if the database is valid.
-      if (!parsedDatabase) {
-      } else {
-        // For the database to be valid, the checklists must contain at least one for before takeoff, one for landing and one for descent.
-        if(parsedDatabase.normalChecklists && parsedDatabase.normalChecklists.filter((cl) => cl.flightPhase ===
-      A380XNormalChecklistFlightPhase.BEFORE_TAKEOFF || cl.flightPhase === A380XNormalChecklistFlightPhase.LANDING || cl.flightPhase === A380XNormalChecklistFlightPhase.DESCENT
-      ).length < 3)
-
-      }
-    } catch (error) {
-      this.fwsCustomEcamDatabaseRejectedByBothFws = true;
     }
   }
 

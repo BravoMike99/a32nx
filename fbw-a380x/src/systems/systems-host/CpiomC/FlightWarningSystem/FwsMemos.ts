@@ -42,7 +42,7 @@ export class FwsMemos {
     271000001: {
       // GND SPLRs ARMED
       flightPhaseInhib: [],
-      simVarIsActive: this.fws.spoilersArmed,
+      simVarIsActive: this.fws.spoilersArmedMemo,
       whichCodeToReturn: () => [0],
       codesToReturn: ['271000001'],
       memoInhibit: () => this.fws.toOrLdgMemoActive.get(),
@@ -598,24 +598,35 @@ export class FwsMemos {
       simVarIsActive: this.fws.toMemo.map((t) => !!t),
       whichCodeToReturn: () => [
         0,
-        this.fws.seatBeltSwitchOn.get() ? 2 : 1,
-        this.fws.spoilersArmed.get() ? 4 : 3,
-        !this.fws.flapsNotToMemo ? 6 : 5,
-        this.fws.autoBrakeRto ? 8 : 7,
-        this.fws.toConfigNormal.get() ? 10 : 9,
+        this.fws.memoSeatbelsOnPin ? (this.fws.seatBeltSwitchOn.get() ? 2 : 1) : this.fws.signsOn.get() ? 3 : 4,
+        (this.fws.spoilersArmed ? 6 : 5) + (this.fws.memoGndSpoilersAsSplrs ? 0 : 2), // Shift 2 depending on gnd spoilers option
+        !this.fws.flapsNotToMemo ? 9 : 10,
+        this.fws.autoBrakeRto ? 12 : 11,
+        this.fws.toConfigNormal.get() ? 14 : 13,
       ],
       codesToReturn: [
         '000001001',
+        // SEATBELTS
         '000001002',
         '000001003',
-        '000001006',
-        '000001007',
+        // SIGNS ON PIN
+        '000001004',
+        '000001005',
+        // GND SPLRs ARMED
         '000001008',
         '000001009',
+        // SPLRs ARMED
         '000001010',
         '000001011',
+        // FLAPS
         '000001012',
         '000001013',
+        // AUTO BRK
+        '000001015',
+        '000001016',
+        // TO CONFIG
+        '000001017',
+        '000001018',
       ],
       memoInhibit: () => false,
       leftSide: true,
@@ -626,19 +637,42 @@ export class FwsMemos {
       simVarIsActive: this.fws.ldgMemo.map((t) => !!t),
       whichCodeToReturn: () => [
         0,
-        this.fws.seatBeltSwitchOn.get() ? 2 : 1,
-        this.fws.isAllGearDownlocked ? 4 : 3,
-        this.fws.spoilersArmed.get() ? 6 : 5,
-        this.fws.flapsLeverInLandingConfiguration.get() ? 8 : 7,
+        this.fws.memoSeatbelsOnPin ? (this.fws.seatBeltSwitchOn.get() ? 2 : 1) : this.fws.signsOn.get() ? 3 : 4,
+        this.fws.isAllGearDownlocked ? 6 : 5,
+        // With SPLRs memo, the flaps are shown before the spoilers otherwise the spoilers are shown before the flaps
+        this.fws.memoGndSpoilersAsSplrs
+          ? this.fws.flapsLeverInLandingConfiguration
+            ? 11
+            : 12
+          : this.fws.spoilersArmed
+            ? 8
+            : 9,
+        this.fws.memoGndSpoilersAsSplrs
+          ? this.fws.spoilersArmed
+            ? 10
+            : 9
+          : this.fws.flapsLeverInLandingConfiguration
+            ? 11
+            : 12,
       ],
       codesToReturn: [
         '000002001',
-        '000002002',
-        '000002003',
+        // SEATBELTS
+        '000001002',
+        '000001003',
+        // SIGNS ON PIN
+        '000001004',
+        '000001005',
+        // LDG GEAR DOWN
         '000002006',
         '000002007',
-        '000002008',
-        '000002009',
+        // GND SPLRs ARMED
+        '000001008',
+        '000001009',
+        // SPLRs ARMED
+        '000001010',
+        '000001011',
+        // FLAPS
         '000002010',
         '000002011',
       ],
