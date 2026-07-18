@@ -1,9 +1,12 @@
 // Copyright (c) 2024-2026 FlyByWire Simulations
 // SPDX-License-Identifier: GPL-3.0
-import { ConsumerSubject, FSComponent, Subject, VNode } from '@microsoft/msfs-sdk';
-import { deferredProcedureIds, EcamNormalProcedures } from '../../MsfsAvionicsCommon/EcamMessages/NormalProcedures';
+import { ConsumerSubject, FSComponent, VNode } from '@microsoft/msfs-sdk';
+import { EcamNormalProcedures } from '../../MsfsAvionicsCommon/EcamMessages/NormalProcedures';
 import {
+  CHECKLIST_OVERVIEW_ID,
+  CHECKLIST_OVERVIEW_ID_TEXT,
   ChecklistLineStyle,
+  deferredProcedureIds,
   DeferredProcedureType,
   EcamDeferredProcedures,
 } from '../..//MsfsAvionicsCommon/EcamMessages';
@@ -37,7 +40,8 @@ export class WdNormalChecklists extends WdAbstractChecklistComponent {
     const sorted = checklists
       .filter((v) => v.id !== CHECKLIST_OVERVIEW_ID_TEXT)
       .sort((a, b) => parseInt(a.id) - parseInt(b.id));
-    const clState = sorted.find((v) => parseInt(v.id) === this.checklistId.get());
+    const checklistId = this.checklistId.get();
+    const clState = sorted.find((v) => parseInt(v.id) === checklistId) ?? null;
 
     // Status of deferred procedures
     this.hasDeferred[0] = this.deferred
@@ -68,7 +72,9 @@ export class WdNormalChecklists extends WdAbstractChecklistComponent {
       .get()
       .every((p) => EcamDeferredProcedures[p.id]?.type === DeferredProcedureType.FOR_LANDING && p.procedureCompleted);
 
-    if (this.checklistId.get() === CHECKLIST_OVERVIEW_ID) {
+    const clStateIntId = clState !== null ? parseInt(clState.id) : null;
+
+    if (checklistId === CHECKLIST_OVERVIEW_ID) {
       // Render overview page
       this.lineData.push({
         activeProcedure: true,
@@ -83,19 +89,18 @@ export class WdNormalChecklists extends WdAbstractChecklistComponent {
       const overViewState = checklists.find((v) => v.id === CHECKLIST_OVERVIEW_ID_TEXT);
 
       sorted.forEach((state, index) => {
-        if (EcamNormalProcedures[parseInt(state.id)]) {
+        const intCheckListId = parseInt(state.id);
+        if (EcamNormalProcedures[intCheckListId]) {
           let lineStyle: ChecklistLineStyle;
           let checked = false;
           let display = true;
-          if (deferredProcedureIds.includes(parseInt(state.id))) {
-            display = false;
+          const defferedIndex = deferredProcedureIds.findIndex((p) => p === intCheckListId);
+          if (defferedIndex > -1) {
+            checked = this.deferredIsCompleted[defferedIndex];
+            display = this.hasDeferred[defferedIndex];
             lineStyle = state.procedureCompleted
               ? ChecklistLineStyle.CompletedDeferredProcedure
               : ChecklistLineStyle.DeferredProcedure;
-            if (deferredProcedureIds.findIndex((p) => p === parseInt(state.id)) >= 0) {
-              checked = this.deferredIsCompleted[deferredProcedureIds.findIndex((p) => p === parseInt(state.id))];
-              display = this.hasDeferred[deferredProcedureIds.findIndex((p) => p === parseInt(state.id))];
-            }
           } else {
             lineStyle = state.procedureCompleted
               ? ChecklistLineStyle.CompletedChecklist
@@ -109,7 +114,7 @@ export class WdNormalChecklists extends WdAbstractChecklistComponent {
               activeProcedure: true,
               sensed: true,
               checked: checked,
-              text: EcamNormalProcedures[parseInt(state.id)].title,
+              text: EcamNormalProcedures[intCheckListId].title,
               style: lineStyle,
               firstLine: false,
               lastLine: index === sorted.length - 1,
@@ -120,20 +125,20 @@ export class WdNormalChecklists extends WdAbstractChecklistComponent {
       });
       this.totalLines.set(sorted.length + this.hasDeferred.reduce((acc, val) => acc + (val ? 1 : 0), 0) + 1);
     } else if (
-      clState &&
-      EcamNormalProcedures[parseInt(clState.id)] &&
-      !deferredProcedureIds.includes(parseInt(clState.id))
+      clState !== null &&
+      EcamNormalProcedures[clStateIntId!] &&
+      !deferredProcedureIds.includes(clStateIntId!)
     ) {
-      const procGen = new ProcedureLinesGenerator(clState.id, Subject.create(true), ProcedureType.Normal, clState);
+      const procGen = new ProcedureLinesGenerator(clState!.id, true, ProcedureType.Normal, clState!);
       this.lineData.push(...procGen.toLineData());
-    } else if (clState && deferredProcedureIds.includes(parseInt(clState.id))) {
+    } else if (clState !== null && deferredProcedureIds.includes(clStateIntId!)) {
       // Deferred procedures
       this.lineData.push({
         activeProcedure: true,
         abnormalProcedure: true,
         sensed: true,
         checked: false,
-        text: `${clState.procedureCompleted ? '\x1b<7m' : '\x1b<4m'}${EcamNormalProcedures[parseInt(clState.id)].title} \x1bm`,
+        text: `${clState!.procedureCompleted ? '\x1b<7m' : '\x1b<4m'}${EcamNormalProcedures[clStateIntId!].title} \x1bm`,
         style: ChecklistLineStyle.Headline,
         firstLine: true,
         lastLine: false,
@@ -149,17 +154,16 @@ export class WdNormalChecklists extends WdAbstractChecklistComponent {
         lastLine: false,
       });
 
-      const currentDeferredType =
-        deferredProcedureIds.indexOf(parseInt(clState.id)) !== -1
-          ? (deferredProcedureIds.indexOf(parseInt(clState.id)) as DeferredProcedureType)
-          : null;
+      const defferedIndex = deferredProcedureIds.indexOf(clStateIntId!);
+
+      const currentDeferredType = defferedIndex !== -1 ? (defferedIndex as DeferredProcedureType) : null;
       const visibleDeferred = this.deferred
         .get()
         .filter((v) => currentDeferredType !== null && EcamDeferredProcedures[v.id].type === currentDeferredType);
       visibleDeferred.forEach((proc, index) => {
         const procGen = new ProcedureLinesGenerator(
           proc.id,
-          this.activeDeferredProcedureId.map((id) => proc.id === id),
+          this.activeDeferredProcedureId.map((id) => proc.id === id).get(),
           ProcedureType.Deferred,
           proc,
           undefined,

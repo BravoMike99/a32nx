@@ -419,7 +419,7 @@ export class FwsMemos {
       simVarIsActive: this.fws.noMobileSwitchOn,
       whichCodeToReturn: () => [0],
       codesToReturn: ['335000003'],
-      memoInhibit: () => false,
+      memoInhibit: () => this.fws.toOrLdgMemoActive.get() && !this.fws.memoSeatbelsOnPin,
     },
     '340000001': {
       // TRUE NORTH REF

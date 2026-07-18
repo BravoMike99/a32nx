@@ -1,7 +1,7 @@
 // Copyright (c) 2024-2026 FlyByWire Simulations
 // SPDX-License-Identifier: GPL-3.0
 
-import { Subject, Subscribable } from '@microsoft/msfs-sdk';
+import { Subject } from '@microsoft/msfs-sdk';
 import {
   AbnormalProcedure,
   ChecklistAction,
@@ -23,12 +23,9 @@ import {
   AbstractChecklistItem,
   WdSpecialLine,
   WD_LINE_CHARACTERS,
-} from './';
-import {
-  DEPARTURE_CHANGE_NORMAL_CHECKLIST_ID,
   DEPATURE_CHANGE_NORMAL_CHECKLIST_ID_TEXT,
-  EcamNormalProcedures,
-} from './NormalProcedures';
+} from './';
+import { EcamNormalProcedures } from './NormalProcedures';
 import { ChecklistState } from '../providers/FwsPublisher';
 
 export enum ProcedureType {
@@ -68,7 +65,7 @@ export class ProcedureLinesGenerator {
 
   constructor(
     public procedureId: string,
-    public procedureIsActive: Subscribable<boolean>,
+    public procedureIsActive: boolean,
     private type: ProcedureType,
     public checklistState: ChecklistState,
     private itemCheckedCallback?: (newState: ChecklistState) => void,
@@ -420,7 +417,7 @@ export class ProcedureLinesGenerator {
     if (isDeferred) {
       lineData.push({
         abnormalProcedure: true,
-        activeProcedure: this.procedureIsActive.get(),
+        activeProcedure: this.procedureIsActive,
         sensed: true,
         checked: false,
         text: `${this.checklistState.procedureCompleted ? '\x1b<7m> ' : '\x1b<4m> '}${this.procedure?.title ?? 'UNDEFINED'}`,
@@ -431,21 +428,21 @@ export class ProcedureLinesGenerator {
     } else {
       lineData.push({
         abnormalProcedure: isAbnormalOrDeferred,
-        activeProcedure: this.procedureIsActive.get(),
+        activeProcedure: this.procedureIsActive,
         sensed: true,
         checked: false,
         text: this.procedure?.title ?? 'UNDEFINED',
         style: ChecklistLineStyle.Headline,
         firstLine: true,
-        lastLine: this.procedureIsActive.get() ? false : true,
+        lastLine: this.procedureIsActive ? false : true,
       });
     }
 
-    if (!isAbnormal || this.procedureIsActive.get() || this.type === ProcedureType.FwsFailedFallback) {
+    if (!isAbnormal || this.procedureIsActive || this.type === ProcedureType.FwsFailedFallback) {
       if (this.recommendation) {
         lineData.push({
           abnormalProcedure: isAbnormalOrDeferred,
-          activeProcedure: this.procedureIsActive.get(),
+          activeProcedure: this.procedureIsActive,
           sensed: true,
           checked: false,
           text: this.recommendation,
@@ -458,7 +455,7 @@ export class ProcedureLinesGenerator {
       if ((isDeferred && !this.checklistState.procedureCompleted) || isAbnormalNotSensed) {
         lineData.push({
           abnormalProcedure: isAbnormalOrDeferred,
-          activeProcedure: this.procedureIsActive.get(),
+          activeProcedure: this.procedureIsActive,
           sensed: false,
           checked: this.checklistState.procedureActivated ?? false,
           text: `${'\xa0'.repeat(31)}ACTIVATE`,
@@ -508,13 +505,13 @@ export class ProcedureLinesGenerator {
         lineData.push({
           procedureId: this.procedureId,
           abnormalProcedure: isAbnormalOrDeferred,
-          activeProcedure: this.procedureIsActive.get(),
+          activeProcedure: this.procedureIsActive,
           sensed: isCondition ? true : item.sensed,
           checked: this.checklistState.itemsChecked[itemIndex],
           text: text.substring(0, WD_LINE_CHARACTERS - 1),
           style: clStyle,
-          firstLine: (!this.procedureIsActive.get() && isAbnormal) || this.type === ProcedureType.FwsFailedFallback,
-          lastLine: (!this.procedureIsActive.get() && isAbnormal) || this.type === ProcedureType.FwsFailedFallback,
+          firstLine: (!this.procedureIsActive && isAbnormal) || this.type === ProcedureType.FwsFailedFallback,
+          lastLine: (!this.procedureIsActive && isAbnormal) || this.type === ProcedureType.FwsFailedFallback,
           originalItemIndex: !isCondition || (isCondition && item.sensed) ? itemIndex : undefined, // FIXME It should be possible to scroll to non sensed conditions
           inactive: inactive,
           specialLine: clStyle === ChecklistLineStyle.Empty ? WdSpecialLine.Empty : undefined,
@@ -533,13 +530,13 @@ export class ProcedureLinesGenerator {
           const confirmText = `${item.level ? '\xa0'.repeat(item.level) : ''}CONFIRM ${itemNameWithoutConditionHeader}`;
           lineData.push({
             abnormalProcedure: isAbnormalOrDeferred,
-            activeProcedure: this.procedureIsActive.get(),
+            activeProcedure: this.procedureIsActive,
             sensed: item.sensed,
             checked: this.checklistState.itemsChecked[itemIndex],
             text: confirmText,
             style: clStyle,
-            firstLine: !this.procedureIsActive.get() && isAbnormal,
-            lastLine: !this.procedureIsActive.get() && isAbnormal,
+            firstLine: !this.procedureIsActive && isAbnormal,
+            lastLine: !this.procedureIsActive && isAbnormal,
             originalItemIndex: itemIndex,
             inactive: inactive,
           });
@@ -549,7 +546,7 @@ export class ProcedureLinesGenerator {
       if (isAbnormal && this.type !== ProcedureType.FwsFailedFallback) {
         lineData.push({
           abnormalProcedure: isAbnormalOrDeferred,
-          activeProcedure: this.procedureIsActive.get(),
+          activeProcedure: this.procedureIsActive,
           sensed: false,
           checked: false,
           text: `${'\xa0'.repeat(34)}CLEAR`,
@@ -560,7 +557,7 @@ export class ProcedureLinesGenerator {
         });
       } else if (this.type === ProcedureType.Normal) {
         lineData.push({
-          activeProcedure: this.procedureIsActive.get(),
+          activeProcedure: this.procedureIsActive,
           sensed: false,
           checked: this.checklistState.procedureCompleted ?? false,
           text: `C/L COMPLETE${this.procedureId === DEPATURE_CHANGE_NORMAL_CHECKLIST_ID_TEXT ? ' AND RESET' : ''}`.padStart(
@@ -574,7 +571,7 @@ export class ProcedureLinesGenerator {
         });
 
         lineData.push({
-          activeProcedure: this.procedureIsActive.get(),
+          activeProcedure: this.procedureIsActive,
           sensed: false,
           checked: false,
           text: `${'\xa0'.repeat(34)}RESET`,
@@ -586,7 +583,7 @@ export class ProcedureLinesGenerator {
       } else if (isDeferred) {
         if (this.checklistState.procedureCompleted) {
           lineData.push({
-            activeProcedure: this.procedureIsActive.get(),
+            activeProcedure: this.procedureIsActive,
             sensed: false,
             checked: false,
             text: `${'\xa0'.repeat(19)}DEFERRED PROC RECALL`,
@@ -598,7 +595,7 @@ export class ProcedureLinesGenerator {
           });
         } else {
           lineData.push({
-            activeProcedure: this.procedureIsActive.get(),
+            activeProcedure: this.procedureIsActive,
             sensed: false,
             checked: this.checklistState.procedureCompleted ?? false,
             text: `${'\xa0'.repeat(17)}DEFERRED PROC COMPLETE`,
@@ -627,7 +624,7 @@ export class ProcedureLinesGenerator {
     // Empty line after procedure
     lineData.push({
       abnormalProcedure: isAbnormalOrDeferred,
-      activeProcedure: this.procedureIsActive.get() || isDeferred,
+      activeProcedure: this.procedureIsActive || isDeferred,
       sensed: true,
       checked: false,
       text: '',

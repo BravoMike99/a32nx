@@ -1,7 +1,7 @@
 // Copyright (c) 2026 FlyByWire Simulations
 // SPDX-License-Identifier: GPL-3.0
 
-export enum A380XNormalChecklistType {
+export enum A380XCustomNormalChecklistType {
   COCKPIT_PREP = 0,
   BEFORE_START,
   AFTER_START,
@@ -15,6 +15,9 @@ export enum A380XNormalChecklistType {
   PARKING,
   SECURE,
 }
+
+export const MAX_NUMBER_CHECKLISTS = Object.keys(A380XCustomNormalChecklistType).length;
+export const MAX_NUMBER_CHECKLIST_ITEMS = 20;
 
 export enum A380XNormalChecklistSensedItem {
   SIGNS_ON,
@@ -78,18 +81,15 @@ export interface A380XNormalChecklistDefinition {
 
   items: A380xNormalChecklistItem[];
 
-  flightPhase: A380XNormalChecklistType;
+  flightPhase: A380XCustomNormalChecklistType;
 }
 
-export interface A380XCustomEcamDefinition {
+export interface A380XEcamDefinition {
   /** Whether to display the TO/LDG memo with SIGNS ON instead of SEAT BELTS ON */
   toldgMemoSignsOn?: boolean;
 
-  /** Whether to display the GND SPLRs as SPLRs in the T.O and LDG MEMOs. If so, they will be shown before the flaps */
+  /** Whether to display the GND SPLRs as SPLRs in the T.O and LDG MEMOs. If so, they will be shown before the flaps on the landing checklist */
   memoGndSplrsAsSplrs?: boolean;
-
-  /** Whether to spell the TO config normal as "NORMAL" instead of "NORM" */
-  toMemoConfigNormAsNormal?: boolean;
 
   /** The normal checklists for the aircraft */
   normalChecklists?: A380XNormalChecklistDefinition[];

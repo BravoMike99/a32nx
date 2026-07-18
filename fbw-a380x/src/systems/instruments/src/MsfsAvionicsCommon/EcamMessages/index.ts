@@ -739,6 +739,36 @@ export interface AbnormalProcedure {
   recommendation?: 'LAND ASAP' | 'LAND ANSA';
 }
 
+export enum NormalProcedureType {
+  COCKPIT_PREPARATION = 1000001,
+  BEFORE_START,
+  AFTER_START,
+  TAXI_BEFORE_TAKEOFF,
+  LINE_UP,
+  DEPARTURE_CHANGE,
+  AFTER_TAKEOFF,
+  ALL_PHASES_DEFFERED_PROCEDURE,
+  BEFORE_TOD_DEFFERED_PROCEDURE,
+  BEFORE_APPROACH_DEFFERED_PROCEDURE,
+  APPROACH,
+  BEFORE_LANDING_DEFFERED_PROCEDURE,
+  LANDING,
+  AFTER_LANDING,
+  PARKING,
+  SECURE,
+}
+
+export const deferredProcedureIds = [
+  NormalProcedureType.ALL_PHASES_DEFFERED_PROCEDURE,
+  NormalProcedureType.BEFORE_TOD_DEFFERED_PROCEDURE,
+  NormalProcedureType.BEFORE_APPROACH_DEFFERED_PROCEDURE,
+  NormalProcedureType.BEFORE_LANDING_DEFFERED_PROCEDURE,
+];
+export const DEPARTURE_CHANGE_NORMAL_CHECKLIST_ID = NormalProcedureType.DEPARTURE_CHANGE;
+export const DEPATURE_CHANGE_NORMAL_CHECKLIST_ID_TEXT = NormalProcedureType[NormalProcedureType.DEPARTURE_CHANGE];
+export const CHECKLIST_OVERVIEW_ID = 0;
+export const CHECKLIST_OVERVIEW_ID_TEXT = '0';
+
 export interface NormalProcedure {
   /** Title of the checklist, e.g. "BEFORE START".  */
   title: string;
