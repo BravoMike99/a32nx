@@ -20,7 +20,7 @@ import {
   EcamLimitations,
 } from '../../../MsfsAvionicsCommon/EcamMessages';
 import { FormattedFwcText } from '../../../EWD/elements/FormattedFwcText';
-import { ChecklistState, FwsEvents } from '../../../MsfsAvionicsCommon/providers/FwsPublisher';
+import { ChecklistState, FwsEvents } from '../../../../../shared/src/publishers/FwsPublisher';
 import { MoreLabel, PageTitle } from '../Generic/PageTitle';
 import { SDSimvars } from '../../SDSimvarPublisher';
 import { SdPageProps } from '../../SD';

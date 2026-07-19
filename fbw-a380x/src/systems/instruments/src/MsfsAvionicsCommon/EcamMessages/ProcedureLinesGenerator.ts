@@ -26,7 +26,7 @@ import {
   DEPATURE_CHANGE_NORMAL_CHECKLIST_ID_TEXT,
 } from './';
 import { EcamNormalProcedures } from './NormalProcedures';
-import { ChecklistState } from '../providers/FwsPublisher';
+import { ChecklistState } from '../../../../shared/src/publishers/FwsPublisher';
 
 export enum ProcedureType {
   Normal,

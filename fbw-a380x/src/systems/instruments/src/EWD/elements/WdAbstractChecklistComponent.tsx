@@ -11,7 +11,7 @@ import {
 } from '@microsoft/msfs-sdk';
 import { EwdSimvars } from '../shared/EwdSimvarPublisher';
 import { FcdcSimvars } from '@shared/publishers/FcdcPublisher';
-import { FwsEvents } from '../../MsfsAvionicsCommon/providers/FwsPublisher';
+import { FwsEvents } from '../../../../shared/src/publishers/FwsPublisher';
 import { ChecklistLineStyle, WD_NUM_LINES, WdLineData, WdSpecialLine } from '../../MsfsAvionicsCommon/EcamMessages';
 import { DestroyableComponent } from '../..//MsfsAvionicsCommon/DestroyableComponent';
 import { FormattedFwcText } from './FormattedFwcText';

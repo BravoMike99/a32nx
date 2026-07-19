@@ -21,7 +21,7 @@ import { BleedSupply } from './elements/BleedSupply';
 import { WdMemos } from './elements/WdMemos';
 import { WdLimitations } from './elements/WdLimitations';
 import { WdNormalChecklists } from './elements/WdNormalChecklists';
-import { FwsEvents } from '../MsfsAvionicsCommon/providers/FwsPublisher';
+import { FwsEvents } from '../../../shared/src/publishers/FwsPublisher';
 import { WdAbnormalSensedProcedures } from './elements/WdAbnormalSensedProcedures';
 import { WdAbnormalNonSensedProcedures } from './elements/WdAbnormalNonSensed';
 import { DestroyableComponent } from '../MsfsAvionicsCommon/DestroyableComponent';

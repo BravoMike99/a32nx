@@ -3,7 +3,7 @@
 
 import { MapSubject, SimVarValueType, Subject, Subscription } from '@microsoft/msfs-sdk';
 // FIXME should not import from instruments
-import { ChecklistState, FwsEvents } from '../../../instruments/src/MsfsAvionicsCommon/providers/FwsPublisher';
+import { ChecklistState, FwsEvents } from '../../../shared/src/publishers/FwsPublisher';
 import { FwcAuralWarning, FwsCore } from './FwsCore';
 // FIXME should not import from instruments
 import { EcamAbNormalSensedSubMenuVector } from '../../../instruments/src/MsfsAvionicsCommon/EcamMessages';

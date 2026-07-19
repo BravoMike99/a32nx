@@ -11,7 +11,7 @@ import { DestroyableComponent } from '../../MsfsAvionicsCommon/DestroyableCompon
 import { FormattedFwcText } from './FormattedFwcText';
 import { EwdSimvars } from '../shared/EwdSimvarPublisher';
 import { EcamLimitations } from '../../MsfsAvionicsCommon/EcamMessages';
-import { FwsEvents } from '../../MsfsAvionicsCommon/providers/FwsPublisher';
+import { FwsEvents } from '../../../../shared/src/publishers/FwsPublisher';
 
 interface WdLimitationsProps {
   bus: EventBus;

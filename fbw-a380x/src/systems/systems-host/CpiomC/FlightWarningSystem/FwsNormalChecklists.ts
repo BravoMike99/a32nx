@@ -11,19 +11,24 @@ import {
   Subscription,
 } from '@microsoft/msfs-sdk';
 // FIXME should not import from instruments
-import { ChecklistState, FwsEvents } from '../../../instruments/src/MsfsAvionicsCommon/providers/FwsPublisher';
+import { ChecklistState, FwsEvents } from '../../../shared/src/publishers/FwsPublisher';
 // FIXME circular import
 import { FwsCore } from './FwsCore';
 // FIXME should not import from instruments
-import { EcamNormalProcedures } from '../../../instruments/src/MsfsAvionicsCommon/EcamMessages/NormalProcedures';
+import {
+  EcamNormalProcedures,
+  LINE_SEPARATOR_CHECKLIST_ITEM,
+} from '../../../instruments/src/MsfsAvionicsCommon/EcamMessages/NormalProcedures';
 // FIXME should not import from instruments
 import {
   CHECKLIST_OVERVIEW_ID,
   CHECKLIST_OVERVIEW_ID_TEXT,
+  ChecklistAction,
+  ChecklistLineStyle,
+  ChecklistSpecialItem,
   deferredProcedureIds,
   DeferredProcedureType,
   DEPARTURE_CHANGE_NORMAL_CHECKLIST_ID,
-  DEPATURE_CHANGE_NORMAL_CHECKLIST_ID_TEXT,
   EcamDeferredProcedures,
   NormalProcedure,
   NormalProcedureType,
@@ -37,7 +42,16 @@ import {
 } from '../../../instruments/src/MsfsAvionicsCommon/EcamMessages/ProcedureLinesGenerator';
 import { NXLogicMemoryNode, RegisteredSimVar } from '@flybywiresim/fbw-sdk';
 import { FwcFlightPhase } from './FwsFlightPhases';
-import { A380XNormalChecklistDefinitionItemAction, A380XNormalChecklistSensedItem } from '@shared/A380XEcamDefinition';
+import {
+  A380XCustomNormalChecklistType,
+  A380XCustomNormalChecklist,
+  A380XCustomChecklistItemAction,
+  A380xCustomNormalChecklistItem,
+  A380XCustomChecklistSensedItemType,
+  isActionItem,
+  isHeadlineItem,
+  isLineSeparatorItem,
+} from './A380XCustomEcamDefinition';
 
 export interface NormalEclSensedItems {
   /** Returns a boolean vector (same length as number of items). If true, item is marked as completed. If null, it's a non-sensed item */
@@ -45,7 +59,7 @@ export interface NormalEclSensedItems {
 }
 
 export class FwsNormalChecklists {
-  public readonly sensedItems: Map<NormalProcedureType, NormalEclSensedItems> = new Map([
+  private readonly sensedItems: Map<NormalProcedureType, NormalEclSensedItems> = new Map([
     [
       NormalProcedureType.COCKPIT_PREPARATION,
       {
@@ -105,6 +119,7 @@ export class FwsNormalChecklists {
         whichItemsChecked: () => [],
       },
     ],
+    [NormalProcedureType.DESCENT, {}],
     [
       NormalProcedureType.BEFORE_APPROACH_DEFFERED_PROCEDURE,
       {
@@ -216,6 +231,10 @@ export class FwsNormalChecklists {
 
   private defferedLandingProcedureId = 0;
 
+  private readonly normalChecklistKeysSorted = Object.keys(NormalProcedureType)
+    .map((v) => parseInt(v))
+    .sort((a, b) => a - b);
+
   constructor(private fws: FwsCore) {
     this.initializeChecklistState();
     this.subscriptions.push(
@@ -234,7 +253,7 @@ export class FwsNormalChecklists {
     this.subscriptions.push(
       this.checklistId.sub((id) => {
         const clState = this.checklistState.getValue(id);
-        if (id !== 0 && !deferredProcedureIds.includes(id) && clState) {
+        if (id !== 0 && deferredProcedureIds.indexOf(id) === -1 && clState) {
           const procGen = new ProcedureLinesGenerator(
             clState.id,
             true,
@@ -245,7 +264,7 @@ export class FwsNormalChecklists {
             },
             (newState) => {
               this.checklistState.setValue(this.checklistId.get(), newState);
-              this.reset(this.getNormalProceduresKeysSorted().findIndex((v) => v === this.checklistId.get()));
+              this.reset(this.normalChecklistKeysSorted.findIndex((v) => v === this.checklistId.get()));
             },
             (newState) => {
               this.showChecklistRequested.set(false);
@@ -369,7 +388,7 @@ export class FwsNormalChecklists {
       ).sub((v) => {
         if (v) {
           this.reset(
-            this.getNormalProceduresKeysSorted().findIndex((i) => i === DEPARTURE_CHANGE_NORMAL_CHECKLIST_ID), // reset starting at departure change,
+            this.departureChangeid, // reset starting at departure change,
           );
         }
       });
@@ -380,17 +399,10 @@ export class FwsNormalChecklists {
     this.pub.pub('fws_deferred_procedures', [], true);
   }
 
-  getNormalProceduresKeysSorted() {
-    return Object.keys(EcamNormalProcedures)
-      .map((v) => parseInt(v))
-      .sort((a, b) => a - b);
-  }
-
   selectFirst() {
     if (this.checklistId.get() === CHECKLIST_OVERVIEW_ID) {
       // Find first non-completed checklist
-      const keys = this.getNormalProceduresKeysSorted();
-      const firstIncompleteChecklist = keys.findIndex(
+      const firstIncompleteChecklist = this.normalChecklistKeysSorted.findIndex(
         (key, index) =>
           this.checklistState.getValue(CHECKLIST_OVERVIEW_ID)?.itemsToShow[index] &&
           !this.checklistState.getValue(key)?.procedureCompleted,
@@ -403,7 +415,7 @@ export class FwsNormalChecklists {
 
   moveUp() {
     if (this.checklistId.get() === CHECKLIST_OVERVIEW_ID) {
-      const shownItems = this.getNormalProceduresKeysSorted()
+      const shownItems = this.normalChecklistKeysSorted
         .map((_, index) => (this.checklistState.getValue(CHECKLIST_OVERVIEW_ID)?.itemsToShow[index] ? index : null))
         .filter((v) => v !== null);
       this.selectedLine.set(Math.max(shownItems[shownItems.indexOf(this.selectedLine.get()) - 1] ?? 0, 0));
@@ -432,7 +444,7 @@ export class FwsNormalChecklists {
   moveDown(skipCompletedSensed = true) {
     const activeDeferredId = this.activeDeferredProcedureId.get();
     if (this.checklistId.get() === CHECKLIST_OVERVIEW_ID) {
-      const shownItems = this.getNormalProceduresKeysSorted()
+      const shownItems = this.normalChecklistKeysSorted
         .map((_, index) => (this.checklistState.getValue(CHECKLIST_OVERVIEW_ID)?.itemsToShow[index] ? index : null))
         .filter((v) => v !== null);
       this.selectedLine.set(
@@ -461,7 +473,7 @@ export class FwsNormalChecklists {
    */
   reset(fromId?: number) {
     if (fromId !== -1) {
-      const ids = this.getNormalProceduresKeysSorted();
+      const ids = this.normalChecklistKeysSorted;
       this.fws.manualCheckListReset.set(fromId !== undefined);
 
       // Show Departure change again if, checklist automatically reset or a manual checklist reset occurs on a previous CL.
@@ -594,7 +606,7 @@ export class FwsNormalChecklists {
     if (this.fws.clCheckPulseNode.read()) {
       if (this.checklistId.get() === CHECKLIST_OVERVIEW_ID) {
         // Navigate to check list
-        this.navigateToChecklist(this.getNormalProceduresKeysSorted()[this.selectedLine.get()]);
+        this.navigateToChecklist(this.normalChecklistKeysSorted[this.selectedLine.get()]);
       } else if (
         deferredProcedureIds.includes(this.checklistId.get()) &&
         this.activeDeferredProcedureId.get() === null
@@ -606,7 +618,7 @@ export class FwsNormalChecklists {
     }
 
     // Update sensed items
-    const ids = this.getNormalProceduresKeysSorted();
+    const ids = this.normalChecklistKeysSorted;
 
     for (let id = 0; id < ids.length; id++) {
       let changed = false;
@@ -684,6 +696,59 @@ export class FwsNormalChecklists {
     }
   }
 
+  private initializeChecklistState() {
+    // Populate checklistState
+    this.normalChecklistKeysSorted.forEach((k) => {
+      const proc = EcamNormalProcedures[k] as NormalProcedure;
+      this.checklistState.setValue(k, {
+        id: k.toString(),
+        procedureCompleted: false,
+        procedureActivated: true,
+        itemsChecked: proc !== undefined ? Array(proc.items.length).fill(false) : [],
+        itemsActive: proc !== undefined ? Array(proc.items.length).fill(true) : [],
+        itemsToShow: proc !== undefined ? Array(proc.items.length).fill(true) : [],
+      });
+    });
+
+    const keysToHide: number[] = [];
+    for (const key of this.normalChecklistKeysSorted) {
+      if (this.sensedItems.get(key)?.whichItemsChecked === undefined) {
+        keysToHide.push(key);
+      }
+    }
+
+    // TODO check for error
+    this.defferedTodProcedureId = this.normalChecklistKeysSorted.indexOf(
+      NormalProcedureType.BEFORE_TOD_DEFFERED_PROCEDURE,
+    );
+    this.defferedCruiseProcedureId = this.normalChecklistKeysSorted.indexOf(
+      NormalProcedureType.ALL_PHASES_DEFFERED_PROCEDURE,
+    );
+    this.defferedApproachProcedureId = this.normalChecklistKeysSorted.indexOf(
+      NormalProcedureType.BEFORE_APPROACH_DEFFERED_PROCEDURE,
+    );
+    this.defferedLandingProcedureId = this.normalChecklistKeysSorted.indexOf(
+      NormalProcedureType.BEFORE_LANDING_DEFFERED_PROCEDURE,
+    );
+    const departureChangeIndex = this.normalChecklistKeysSorted.indexOf(NormalProcedureType.DEPARTURE_CHANGE);
+    this.departureChangeid = departureChangeIndex != -1 ? departureChangeIndex : undefined;
+
+    // Checklists with no items are considered as hidden. This is to support cases where some checklists may not be present.
+    const itemsToShow = this.normalChecklistKeysSorted.map((k) => !keysToHide.includes(k));
+
+    this.checklistState.setValue(CHECKLIST_OVERVIEW_ID, {
+      id: CHECKLIST_OVERVIEW_ID_TEXT,
+      procedureCompleted: false,
+      procedureActivated: true,
+      itemsChecked: Array(this.normalChecklistKeysSorted.length).fill(false),
+      itemsActive: Array(this.normalChecklistKeysSorted.length).fill(true),
+      itemsToShow: itemsToShow,
+    });
+
+    this.subscriptions.push(this.selectedLine.sub(() => this.scrollToSelectedLine()));
+    this.publishInitialState();
+  }
+
   private sendNormalCheckListsToEventBus(map: ReadonlyMap<number, ChecklistState>) {
     const flattened: ChecklistState[] = [];
     map.forEach((val, key) =>
@@ -699,120 +764,166 @@ export class FwsNormalChecklists {
     this.pub.pub('fws_normal_checklists', flattened, true);
   }
 
-  private mapCustomSensedItemToFwsLogic(action: A380XNormalChecklistDefinitionItemAction): () => boolean | null {
-    if (action.sensedItem === undefined) {
+  private mapCustomSensedItemToFwsLogic(action: A380XCustomChecklistItemAction): () => boolean | null {
+    if (action.sensed === undefined) {
       return () => null;
     } else {
-      switch (action.sensedItem) {
-        case A380XNormalChecklistSensedItem.SEATBELTS_ON:
+      switch (action.sensed) {
+        case A380XCustomChecklistSensedItemType.SEATBELTS_ON:
           return () => this.fws.seatBeltSwitchOn.get();
-        case A380XNormalChecklistSensedItem.SEATBELTS_OFF:
+        case A380XCustomChecklistSensedItemType.SEATBELTS_OFF:
           return () => !this.fws.seatBeltSwitchOn.get();
-        case A380XNormalChecklistSensedItem.SIGNS_ON:
+        case A380XCustomChecklistSensedItemType.SIGNS_ON:
           return () => this.fws.signsOn.get();
-        case A380XNormalChecklistSensedItem.SIGNS_OFF:
+        case A380XCustomChecklistSensedItemType.SIGNS_OFF:
           return () => !this.fws.signsOn.get();
-        case A380XNormalChecklistSensedItem.SIGNS_ON_OR_AUTO:
+        case A380XCustomChecklistSensedItemType.SIGNS_ON_OR_AUTO:
           return () => this.fws.signsOnOrAuto.get();
-        case A380XNormalChecklistSensedItem.SPOILERS_ARMED:
+        case A380XCustomChecklistSensedItemType.SPOILERS_ARMED:
           return () => this.fws.spoilersArmed;
-        case A380XNormalChecklistSensedItem.SPOILERS_RETRACTED:
+        case A380XCustomChecklistSensedItemType.SPOILERS_DISARMED:
           return () => !this.fws.spoilersArmed && !this.fws.speedBrakeCommand.get();
-        case A380XNormalChecklistSensedItem.AUTOBRAKE_RTO:
+        case A380XCustomChecklistSensedItemType.AUTOBRAKE_RTO:
           return () => this.fws.autoBrakeRto;
-        case A380XNormalChecklistSensedItem.FLAPS_TO:
+        case A380XCustomChecklistSensedItemType.FLAPS_TO:
           return () => !this.fws.flapsNotToMemo;
-        case A380XNormalChecklistSensedItem.FLAPS_LDG:
+        case A380XCustomChecklistSensedItemType.FLAPS_LDG:
           return () => this.fws.flapsLeverInLandingConfiguration;
-        case A380XNormalChecklistSensedItem.FLAPS_RETRACTED:
+        case A380XCustomChecklistSensedItemType.FLAPS_RETRACTED:
           return () => this.fws.flapLeverZero.get();
-        case A380XNormalChecklistSensedItem.FUEL_PUMPS_OFF:
+        case A380XCustomChecklistSensedItemType.FUEL_PUMPS_OFF:
           return () => this.fws.allFuelPumpsOff.get();
-        case A380XNormalChecklistSensedItem.ADIRS_NAV:
+        case A380XCustomChecklistSensedItemType.ADIRS_NAV:
           return () => this.fws.ir1InNav && this.fws.ir2InNav && this.fws.ir3InNav;
-        case A380XNormalChecklistSensedItem.BEACON_ON:
+        case A380XCustomChecklistSensedItemType.BEACON_ON:
           return () => this.beaconLightSwitch.get();
-        case A380XNormalChecklistSensedItem.APU_START:
+        case A380XCustomChecklistSensedItemType.APU_START:
           return () => this.fws.apuMasterSwitch && this.fws.apuStartSwitch;
-        case A380XNormalChecklistSensedItem.APU_BLEED_OFF:
+        case A380XCustomChecklistSensedItemType.APU_BLEED_OFF:
           return () => !this.fws.apuBleedPbOn.get();
-        case A380XNormalChecklistSensedItem.APU_MASTER_OFF:
+        case A380XCustomChecklistSensedItemType.APU_MASTER_OFF:
           return () => !this.fws.apuMasterSwitch;
-        case A380XNormalChecklistSensedItem.PACKS_ON:
+        case A380XCustomChecklistSensedItemType.PACKS_ON:
           return () => this.fws.pack1On.get() && this.fws.pack2On.get();
-        case A380XNormalChecklistSensedItem.EMER_EXIT_LIGHTS_OFF:
+        case A380XCustomChecklistSensedItemType.EMER_EXIT_LIGHTS_OFF:
           return () => this.emergencyExitLightSwitch.get() == 2;
-        case A380XNormalChecklistSensedItem.OXYGEN_OFF:
+        case A380XCustomChecklistSensedItemType.OXYGEN_OFF:
           return () => this.crewOxygenButtonPushed.get();
-        case A380XNormalChecklistSensedItem.ENGINES_OFF:
+        case A380XCustomChecklistSensedItemType.ENGINES_OFF:
           return () => this.fws.allEnginesMastersOff.get();
-        case A380XNormalChecklistSensedItem.RUDDER_TRIM_NEUTRAL:
+        case A380XCustomChecklistSensedItemType.RUDDER_TRIM_NEUTRAL:
           return () => this.rudderTrimNeutralForTakeoff.get();
-        case A380XNormalChecklistSensedItem.ECAM_STS_NORMAL:
+        case A380XCustomChecklistSensedItemType.ECAM_STS_NORMAL:
           return () => this.fws.ecamStatusNormal.get();
-        case A380XNormalChecklistSensedItem.ECAM_STS_NOT_NORMAL:
+        case A380XCustomChecklistSensedItemType.ECAM_STS_NOT_NORMAL:
           return () => !this.fws.ecamStatusNormal.get();
-        case A380XNormalChecklistSensedItem.GEAR_UP:
+        case A380XCustomChecklistSensedItemType.GEAR_UP:
           return () => !this.fws.gearSelectedUp.get();
-        case A380XNormalChecklistSensedItem.GEAR_DOWN:
+        case A380XCustomChecklistSensedItemType.GEAR_DOWN:
           return () => this.fws.isAllGearDownlocked;
       }
     }
   }
 
-  private initializeChecklistState() {
-    // Populate checklistState
-    const keys = this.getNormalProceduresKeysSorted();
-    keys.forEach((k) => {
-      const proc = EcamNormalProcedures[k] as NormalProcedure;
-      this.checklistState.setValue(k, {
-        id: k.toString(),
-        procedureCompleted: false,
-        procedureActivated: true,
-        itemsChecked: Array(proc.items.length).fill(false),
-        itemsActive: Array(proc.items.length).fill(true),
-        itemsToShow: Array(proc.items.length).fill(true),
-      });
-    });
-
-    const keysToHide: number[] = [];
-    for (const [k, _proc] of Object.entries(EcamNormalProcedures)) {
-      if (this.sensedItems.get(parseInt(k))?.whichItemsChecked === undefined) {
-        keysToHide.push(parseInt(k));
+  private buildCustomChecklistState(customCheclists: A380XCustomNormalChecklist[]): boolean {
+    const presentChecklists: NormalProcedureType[] = [];
+    for (const checklist of customCheclists) {
+      // Checked items
+      const type = FwsNormalChecklists.parseCustomChecklistTypeToNormalProcedureType(checklist.type);
+      presentChecklists.push(type);
+      // Build sensed items
+      const itemsChecked = this.buildSensedItemsFromCustomChecklist(checklist.items);
+      this.sensedItems.get(type)!.whichItemsChecked = itemsChecked;
+      // Build the text definition
+      const textDefinition = this.buildCheckListTextDefinition(checklist);
+      if (!textDefinition) {
+        return false;
       }
     }
+    // Remove any checklists that are not present in the custom checklist definition
+    for (const checklist of this.normalChecklistKeysSorted) {
+      if (!presentChecklists.includes(checklist)) {
+        this.sensedItems.get(checklist)!.whichItemsChecked = undefined;
+      }
+    }
+    return true;
+  }
 
-    // TODO check for error
-    this.defferedTodProcedureId = Object.keys(EcamNormalProcedures).indexOf(
-      NormalProcedureType[NormalProcedureType.BEFORE_TOD_DEFFERED_PROCEDURE],
-    );
-    this.defferedCruiseProcedureId = Object.keys(EcamNormalProcedures).indexOf(
-      NormalProcedureType[NormalProcedureType.ALL_PHASES_DEFFERED_PROCEDURE],
-    );
-    this.defferedApproachProcedureId = Object.keys(EcamNormalProcedures).indexOf(
-      NormalProcedureType[NormalProcedureType.BEFORE_APPROACH_DEFFERED_PROCEDURE],
-    );
-    this.defferedLandingProcedureId = Object.keys(EcamNormalProcedures).indexOf(
-      NormalProcedureType[NormalProcedureType.BEFORE_LANDING_DEFFERED_PROCEDURE],
-    );
-    const departureChangeIndex = Object.keys(EcamNormalProcedures).indexOf(
-      NormalProcedureType[NormalProcedureType.DEPARTURE_CHANGE],
-    );
-    this.departureChangeid = departureChangeIndex != -1 ? departureChangeIndex : undefined;
+  private buildCheckListTextDefinition(customCheclists: A380XCustomNormalChecklist): NormalProcedure | null {
+    const items: (ChecklistAction | ChecklistSpecialItem)[] = [];
+    for (const item of customCheclists.items) {
+      const mappedItem = this.mapCustomChecklistItemToNormalProcedureItem(item);
+      if (mappedItem) {
+        items.push(mappedItem);
+      } else {
+        return null;
+      }
+    }
+    return {
+      title: customCheclists.title,
+      items: items,
+    };
+  }
 
-    // Checklists with no items are considered as hidden. This is to support cases where some checklists may not be present.
-    const itemsToShow = keys.map((k) => !keysToHide.includes(k));
+  private buildSensedItemsFromCustomChecklist(items: A380xCustomNormalChecklistItem[]): () => (boolean | null)[] {
+    return () => items.map((item) => (isActionItem(item) ? this.mapCustomSensedItemToFwsLogic(item)() : null));
+  }
 
-    this.checklistState.setValue(CHECKLIST_OVERVIEW_ID, {
-      id: CHECKLIST_OVERVIEW_ID_TEXT,
-      procedureCompleted: false,
-      procedureActivated: true,
-      itemsChecked: Array(keys.length).fill(false),
-      itemsActive: Array(keys.length).fill(true),
-      itemsToShow: itemsToShow,
-    });
+  private static parseCustomChecklistTypeToNormalProcedureType(
+    type: A380XCustomNormalChecklistType,
+  ): NormalProcedureType {
+    switch (type) {
+      case A380XCustomNormalChecklistType.COCKPIT_PREP:
+        return NormalProcedureType.COCKPIT_PREPARATION;
+      case A380XCustomNormalChecklistType.BEFORE_START:
+        return NormalProcedureType.BEFORE_START;
+      case A380XCustomNormalChecklistType.AFTER_START:
+        return NormalProcedureType.AFTER_START;
+      case A380XCustomNormalChecklistType.TAXI_BEFORE_TAKEOFF:
+        return NormalProcedureType.TAXI_BEFORE_TAKEOFF;
+      case A380XCustomNormalChecklistType.LINE_UP:
+        return NormalProcedureType.LINE_UP;
+      case A380XCustomNormalChecklistType.DEPARTURE_CHANGE:
+        return NormalProcedureType.DEPARTURE_CHANGE;
+      case A380XCustomNormalChecklistType.AFTER_TAKEOFF:
+        return NormalProcedureType.AFTER_TAKEOFF;
+      case A380XCustomNormalChecklistType.DESCENT:
+        return NormalProcedureType.DESCENT;
+      case A380XCustomNormalChecklistType.APPROACH:
+        return NormalProcedureType.APPROACH;
+      case A380XCustomNormalChecklistType.LANDING:
+        return NormalProcedureType.LANDING;
+      case A380XCustomNormalChecklistType.AFTER_LANDING:
+        return NormalProcedureType.AFTER_LANDING;
+      case A380XCustomNormalChecklistType.PARKING:
+        return NormalProcedureType.PARKING;
+      case A380XCustomNormalChecklistType.SECURE:
+        return NormalProcedureType.SECURE;
+    }
+  }
 
-    this.subscriptions.push(this.selectedLine.sub(() => this.scrollToSelectedLine()));
-    this.publishInitialState();
+  private mapCustomChecklistItemToNormalProcedureItem(
+    item: A380xCustomNormalChecklistItem,
+  ): ChecklistAction | ChecklistSpecialItem | null {
+    if (isActionItem(item)) {
+      return {
+        name: item.name,
+        sensed: item.sensed !== undefined,
+        labelNotCompleted: item.labelNotCompleted,
+        labelCompleted: item.labelCompleted,
+        level: item.subLevel ? 1 : 0,
+      };
+    } else if (isLineSeparatorItem(item)) {
+      return LINE_SEPARATOR_CHECKLIST_ITEM;
+    } else if (isHeadlineItem(item)) {
+      return {
+        name: item.name,
+        style: ChecklistLineStyle.SubHeadline,
+        sensed: true,
+      };
+    } else {
+      console.warn('Unknown custom checklist item type', item);
+      return null;
+    }
   }
 }

@@ -1,7 +1,14 @@
 // Copyright (c) 2024-2026 FlyByWire Simulations
 // SPDX-License-Identifier: GPL-3.0
 
-import { ChecklistLineStyle, NormalProcedure } from './';
+import { ChecklistAction, ChecklistLineStyle, NormalProcedure } from './';
+
+export const LINE_SEPARATOR_CHECKLIST_ITEM: ChecklistAction = {
+  name: '',
+  style: ChecklistLineStyle.SeparationLine,
+  labelNotCompleted: '',
+  sensed: true,
+};
 
 /** All normal procedures (checklists, via ECL) should be here.
  * Display is ordered by ID, ascending. That's why keys need to be numbers. */

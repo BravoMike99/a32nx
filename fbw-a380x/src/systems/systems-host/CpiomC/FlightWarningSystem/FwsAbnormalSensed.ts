@@ -20,7 +20,7 @@ import {
   ProcedureType,
 } from '../../../instruments/src/MsfsAvionicsCommon/EcamMessages/ProcedureLinesGenerator';
 // FIXME should not import from instruments
-import { ChecklistState, FwsEvents } from '../../../instruments/src/MsfsAvionicsCommon/providers/FwsPublisher';
+import { ChecklistState, FwsEvents } from '../../../shared/src/publishers/FwsPublisher';
 import { FwcAuralWarning, FwsCore, FwsSuppressableItem } from './FwsCore';
 
 export interface EwdAbnormalItem extends FwsSuppressableItem {

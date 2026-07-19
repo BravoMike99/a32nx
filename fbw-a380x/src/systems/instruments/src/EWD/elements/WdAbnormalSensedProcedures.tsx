@@ -11,7 +11,7 @@ import {
   isChecklistCondition,
   isTimedItem,
 } from '../..//MsfsAvionicsCommon/EcamMessages';
-import { ChecklistState } from '../..//MsfsAvionicsCommon/providers/FwsPublisher';
+import { ChecklistState } from '../../../../shared/src/publishers/FwsPublisher';
 import { Arinc429LocalVarConsumerSubject } from '@flybywiresim/fbw-sdk';
 
 export class WdAbnormalSensedProcedures extends WdAbstractChecklistComponent {

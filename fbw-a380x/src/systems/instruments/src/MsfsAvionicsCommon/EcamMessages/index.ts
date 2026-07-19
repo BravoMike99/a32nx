@@ -17,7 +17,7 @@ import { EcamAbnormalSensedAta46495256 } from './AbnormalSensed/ata46-49-52-56';
 import { EcamAbnormalSensedAta70 } from './AbnormalSensed/ata70';
 import { EcamAbnormalSensedAta80Rest } from './AbnormalSensed/ata80-rest';
 import { EcamAbnormalSecondaryFailures } from './AbnormalSensed/secondary-failures';
-import { AbnormalNonSensedCategory } from '../providers/FwsPublisher';
+import { AbnormalNonSensedCategory } from '../../../../shared/src/publishers/FwsPublisher';
 
 // Convention for IDs:
 // First two digits: ATA chapter. 00 for T.O and LDG memos
@@ -749,6 +749,7 @@ export enum NormalProcedureType {
   AFTER_TAKEOFF,
   ALL_PHASES_DEFFERED_PROCEDURE,
   BEFORE_TOD_DEFFERED_PROCEDURE,
+  DESCENT,
   BEFORE_APPROACH_DEFFERED_PROCEDURE,
   APPROACH,
   BEFORE_LANDING_DEFFERED_PROCEDURE,
