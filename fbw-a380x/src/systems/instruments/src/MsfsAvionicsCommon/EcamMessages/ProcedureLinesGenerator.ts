@@ -24,6 +24,7 @@ import {
   WdSpecialLine,
   WD_LINE_CHARACTERS,
   DEPATURE_CHANGE_NORMAL_CHECKLIST_ID_TEXT,
+  getNormalChecklistProcedureIndex,
 } from './';
 import { EcamNormalProcedures } from './NormalProcedures';
 import { ChecklistState } from '../../../../shared/src/publishers/FwsPublisher';
@@ -75,7 +76,12 @@ export class ProcedureLinesGenerator {
     private isLastProcedure: boolean = false,
   ) {
     if (type === ProcedureType.Normal) {
-      this.procedure = EcamNormalProcedures[parseInt(procedureId)];
+      const idx = getNormalChecklistProcedureIndex(parseInt(procedureId));
+      if (idx == null) {
+        console.warn(`ProcedureId ${procedureId} is not a valid normal checklist procedure id`);
+        return;
+      }
+      this.procedure = EcamNormalProcedures[idx];
     } else if (type === ProcedureType.Abnormal) {
       this.procedure = EcamAbnormalProcedures[procedureId];
     } else if (type === ProcedureType.Deferred) {

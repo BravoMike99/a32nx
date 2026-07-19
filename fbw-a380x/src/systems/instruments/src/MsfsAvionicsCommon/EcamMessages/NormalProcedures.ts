@@ -1,7 +1,7 @@
 // Copyright (c) 2024-2026 FlyByWire Simulations
 // SPDX-License-Identifier: GPL-3.0
 
-import { ChecklistAction, ChecklistLineStyle, NormalProcedure } from './';
+import { ChecklistAction, ChecklistLineStyle, NormalProcedure, NormalProcedureType } from './';
 
 export const LINE_SEPARATOR_CHECKLIST_ITEM: ChecklistAction = {
   name: '',
@@ -11,9 +11,9 @@ export const LINE_SEPARATOR_CHECKLIST_ITEM: ChecklistAction = {
 };
 
 /** All normal procedures (checklists, via ECL) should be here.
- * Display is ordered by ID, ascending. That's why keys need to be numbers. */
-export const EcamNormalProcedures: { [n: number]: NormalProcedure } = {
-  1000001: {
+ * Display is ordered by type value, ascending. */
+export const EcamNormalProcedures: NormalProcedure[] = [
+  {
     title: 'COCKPIT PREPARATION',
     items: [
       {
@@ -38,8 +38,9 @@ export const EcamNormalProcedures: { [n: number]: NormalProcedure } = {
         sensed: false,
       },
     ],
+    type: NormalProcedureType.COCKPIT_PREPARATION,
   },
-  1000002: {
+  {
     title: 'BEFORE START',
     items: [
       {
@@ -59,8 +60,9 @@ export const EcamNormalProcedures: { [n: number]: NormalProcedure } = {
         sensed: true,
       },
     ],
+    type: NormalProcedureType.BEFORE_START,
   },
-  1000003: {
+  {
     title: 'AFTER START',
     items: [
       {
@@ -79,8 +81,9 @@ export const EcamNormalProcedures: { [n: number]: NormalProcedure } = {
         sensed: true,
       },
     ],
+    type: NormalProcedureType.AFTER_START,
   },
-  1000004: {
+  {
     title: 'TAXI',
     items: [
       {
@@ -139,8 +142,9 @@ export const EcamNormalProcedures: { [n: number]: NormalProcedure } = {
         level: 1,
       },
     ],
+    type: NormalProcedureType.TAXI_BEFORE_TAKEOFF,
   },
-  1000005: {
+  {
     title: 'LINE-UP',
     items: [
       {
@@ -154,8 +158,9 @@ export const EcamNormalProcedures: { [n: number]: NormalProcedure } = {
         sensed: false,
       },
     ],
+    type: NormalProcedureType.LINE_UP,
   },
-  1000006: {
+  {
     title: '<<DEPARTURE CHANGE>>',
     items: [
       {
@@ -179,20 +184,24 @@ export const EcamNormalProcedures: { [n: number]: NormalProcedure } = {
         sensed: false,
       },
     ],
+    type: NormalProcedureType.DEPARTURE_CHANGE,
   },
-  1000007: {
+  {
     title: 'ALL PHASES : DEFERRED PROCEDURE',
     items: [],
+    type: NormalProcedureType.ALL_PHASES_DEFFERED_PROCEDURE,
   },
-  1000008: {
+  {
     title: 'AT TOP OF DESCENT : DEFERRED PROCEDURE',
     items: [],
+    type: NormalProcedureType.BEFORE_TOD_DEFFERED_PROCEDURE,
   },
-  1000009: {
+  {
     title: 'FOR APPROACH : DEFERRED PROCEDURE',
     items: [],
+    type: NormalProcedureType.BEFORE_APPROACH_DEFFERED_PROCEDURE,
   },
-  1000010: {
+  {
     title: 'APPROACH',
     items: [
       {
@@ -217,12 +226,14 @@ export const EcamNormalProcedures: { [n: number]: NormalProcedure } = {
         sensed: false,
       },
     ],
+    type: NormalProcedureType.APPROACH,
   },
-  1000011: {
+  {
     title: 'FOR LANDING : DEFERRED PROCEDURE',
     items: [],
+    type: NormalProcedureType.BEFORE_LANDING_DEFFERED_PROCEDURE,
   },
-  1000012: {
+  {
     title: 'LANDING',
     items: [
       { name: 'LDG', style: ChecklistLineStyle.SubHeadline, sensed: true },
@@ -250,8 +261,9 @@ export const EcamNormalProcedures: { [n: number]: NormalProcedure } = {
         sensed: true,
       },
     ],
+    type: NormalProcedureType.LANDING,
   },
-  1000013: {
+  {
     title: 'PARKING',
     items: [
       {
@@ -277,8 +289,9 @@ export const EcamNormalProcedures: { [n: number]: NormalProcedure } = {
         sensed: true,
       },
     ],
+    type: NormalProcedureType.AFTER_LANDING,
   },
-  1000014: {
+  {
     title: 'SECURING THE AIRCRAFT',
     items: [
       {
@@ -304,5 +317,6 @@ export const EcamNormalProcedures: { [n: number]: NormalProcedure } = {
         sensed: false,
       },
     ],
+    type: NormalProcedureType.SECURE,
   },
-};
+];

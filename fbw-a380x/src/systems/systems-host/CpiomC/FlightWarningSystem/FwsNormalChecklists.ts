@@ -30,6 +30,7 @@ import {
   DeferredProcedureType,
   DEPARTURE_CHANGE_NORMAL_CHECKLIST_ID,
   EcamDeferredProcedures,
+  getNormalChecklistProcedureIndex,
   NormalProcedure,
   NormalProcedureType,
   WD_NUM_LINES,
@@ -489,8 +490,10 @@ export class FwsNormalChecklists {
       for (let id = fromId === undefined ? 0 : fromId + 1; id < ids.length; id++) {
         const idFollowing = ids[id];
         const clFollowing = this.checklistState.getValue(idFollowing);
-        const procFollowing = EcamNormalProcedures[idFollowing];
-        if (clFollowing) {
+        const checkListIndex = getNormalChecklistProcedureIndex(idFollowing);
+        const procFollowing =
+          checkListIndex !== null && clFollowing !== undefined ? EcamNormalProcedures[checkListIndex] : null;
+        if (procFollowing && clFollowing) {
           const clStateFollowing: ChecklistState = {
             id: idFollowing.toString(),
             procedureCompleted: false,
@@ -624,9 +627,10 @@ export class FwsNormalChecklists {
       let changed = false;
       const procId = ids[id];
       const cl = this.checklistState.getValue(procId);
-      const proc = EcamNormalProcedures[procId];
+      const idx = getNormalChecklistProcedureIndex(procId);
+      const proc = idx !== null ? EcamNormalProcedures[idx] : null;
 
-      if (cl) {
+      if (cl && proc) {
         const deferredProcIndex = deferredProcedureIds.indexOf(procId);
         const procCompleted =
           deferredProcIndex !== -1 ? this.deferredIsCompleted[deferredProcIndex] : cl.procedureCompleted;
@@ -699,7 +703,7 @@ export class FwsNormalChecklists {
   private initializeChecklistState() {
     // Populate checklistState
     this.normalChecklistKeysSorted.forEach((k) => {
-      const proc = EcamNormalProcedures[k] as NormalProcedure;
+      const proc = EcamNormalProcedures[getNormalChecklistProcedureIndex(k)!] as NormalProcedure;
       this.checklistState.setValue(k, {
         id: k.toString(),
         procedureCompleted: false,
@@ -835,7 +839,7 @@ export class FwsNormalChecklists {
       const itemsChecked = this.buildSensedItemsFromCustomChecklist(checklist.items);
       this.sensedItems.get(type)!.whichItemsChecked = itemsChecked;
       // Build the text definition
-      const textDefinition = this.buildCheckListTextDefinition(checklist);
+      const textDefinition = this.buildCheckListTextDefinition(checklist, type);
       if (!textDefinition) {
         return false;
       }
@@ -849,7 +853,10 @@ export class FwsNormalChecklists {
     return true;
   }
 
-  private buildCheckListTextDefinition(customCheclists: A380XCustomNormalChecklist): NormalProcedure | null {
+  private buildCheckListTextDefinition(
+    customCheclists: A380XCustomNormalChecklist,
+    type: NormalProcedureType,
+  ): NormalProcedure | null {
     const items: (ChecklistAction | ChecklistSpecialItem)[] = [];
     for (const item of customCheclists.items) {
       const mappedItem = this.mapCustomChecklistItemToNormalProcedureItem(item);
@@ -862,6 +869,7 @@ export class FwsNormalChecklists {
     return {
       title: customCheclists.title,
       items: items,
+      type: type,
     };
   }
 
@@ -912,6 +920,7 @@ export class FwsNormalChecklists {
         labelNotCompleted: item.labelNotCompleted,
         labelCompleted: item.labelCompleted,
         level: item.subLevel ? 1 : 0,
+        colonIfCompleted: item.colonIfCompleted ?? true,
       };
     } else if (isLineSeparatorItem(item)) {
       return LINE_SEPARATOR_CHECKLIST_ITEM;

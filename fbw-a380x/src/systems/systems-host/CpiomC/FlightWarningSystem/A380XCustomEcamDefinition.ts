@@ -59,10 +59,16 @@ export interface A380xCustomNormalChecklistItem {
   type: A380xCustomChecklistItemType;
 }
 
+/**
+ * An item rendered as a under line in the checklist. Used for BELOW THE LINE cases for example.
+ */
 export interface A380XCustomChecklistLineSeparator extends A380xCustomNormalChecklistItem {
   type: A380xCustomChecklistItemType.LINE_SEPARATOR;
 }
 
+/**
+ * An item representing a headline for a group. For example LDG for the landing checklist memo. Rendered with an underline.
+ */
 export interface A380XCustomChecklistHeadline extends A380xCustomNormalChecklistItem {
   /** The name of the item, e.g. LDG */
   name: string;
@@ -70,6 +76,9 @@ export interface A380XCustomChecklistHeadline extends A380xCustomNormalChecklist
   type: A380xCustomChecklistItemType.HEADLINE;
 }
 
+/**
+ * An item representing an action in the checklist to be performed by the crew.
+ */
 export interface A380XCustomChecklistItemAction extends A380xCustomNormalChecklistItem {
   /** The name of the item, e.g. SIGNS */
   name: string;
@@ -85,8 +94,12 @@ export interface A380XCustomChecklistItemAction extends A380xCustomNormalCheckli
   sensed?: A380XCustomChecklistSensedItemType;
   /** If true, the item will be shifted to the left */
   subLevel?: boolean;
+
+  /** If true, a colon will be displayed after the item's label when it is completed. Defaults to true */
+  colonIfCompleted?: boolean;
 }
 
+/** The definition of a custom normal checklist, containing it's title, the items and the type */
 export interface A380XCustomNormalChecklist {
   /** The title of the checklist, e.g LANDING */
   title: string;

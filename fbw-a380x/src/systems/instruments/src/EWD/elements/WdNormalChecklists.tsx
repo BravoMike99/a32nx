@@ -9,6 +9,7 @@ import {
   deferredProcedureIds,
   DeferredProcedureType,
   EcamDeferredProcedures,
+  getNormalChecklistProcedureIndex,
 } from '../..//MsfsAvionicsCommon/EcamMessages';
 import { WdAbstractChecklistComponent } from './WdAbstractChecklistComponent';
 import {
@@ -73,6 +74,7 @@ export class WdNormalChecklists extends WdAbstractChecklistComponent {
       .every((p) => EcamDeferredProcedures[p.id]?.type === DeferredProcedureType.FOR_LANDING && p.procedureCompleted);
 
     const clStateIntId = clState !== null ? parseInt(clState.id) : null;
+    const clStateIndex = clStateIntId !== null ? getNormalChecklistProcedureIndex(clStateIntId) : null;
 
     if (checklistId === CHECKLIST_OVERVIEW_ID) {
       // Render overview page
@@ -90,43 +92,48 @@ export class WdNormalChecklists extends WdAbstractChecklistComponent {
 
       sorted.forEach((state, index) => {
         const intCheckListId = parseInt(state.id);
-        if (EcamNormalProcedures[intCheckListId]) {
-          let lineStyle: ChecklistLineStyle;
-          let checked = false;
-          let display = true;
-          const defferedIndex = deferredProcedureIds.findIndex((p) => p === intCheckListId);
-          if (defferedIndex > -1) {
-            checked = this.deferredIsCompleted[defferedIndex];
-            display = this.hasDeferred[defferedIndex];
-            lineStyle = state.procedureCompleted
-              ? ChecklistLineStyle.CompletedDeferredProcedure
-              : ChecklistLineStyle.DeferredProcedure;
-          } else {
-            lineStyle = state.procedureCompleted
-              ? ChecklistLineStyle.CompletedChecklist
-              : ChecklistLineStyle.ChecklistItem;
-            checked = state.procedureCompleted ?? false;
-            display = overViewState?.itemsToShow[index] ?? false; // Ignore checklist titles without any items to show e.g. departure change if disabled
-          }
+        const checklistIndex = getNormalChecklistProcedureIndex(intCheckListId);
+        if (checklistIndex !== null) {
+          if (EcamNormalProcedures[checklistIndex]) {
+            let lineStyle: ChecklistLineStyle;
+            let checked = false;
+            let display = true;
+            const defferedIndex = deferredProcedureIds.findIndex((p) => p === intCheckListId);
+            if (defferedIndex > -1) {
+              checked = this.deferredIsCompleted[defferedIndex];
+              display = this.hasDeferred[defferedIndex];
+              lineStyle = state.procedureCompleted
+                ? ChecklistLineStyle.CompletedDeferredProcedure
+                : ChecklistLineStyle.DeferredProcedure;
+            } else {
+              lineStyle = state.procedureCompleted
+                ? ChecklistLineStyle.CompletedChecklist
+                : ChecklistLineStyle.ChecklistItem;
+              checked = state.procedureCompleted ?? false;
+              display = overViewState?.itemsToShow[index] ?? false; // Ignore checklist titles without any items to show e.g. departure change if disabled
+            }
 
-          if (display) {
-            this.lineData.push({
-              activeProcedure: true,
-              sensed: true,
-              checked: checked,
-              text: EcamNormalProcedures[intCheckListId].title,
-              style: lineStyle,
-              firstLine: false,
-              lastLine: index === sorted.length - 1,
-              originalItemIndex: index,
-            });
+            if (display) {
+              this.lineData.push({
+                activeProcedure: true,
+                sensed: true,
+                checked: checked,
+                text: EcamNormalProcedures[checklistIndex].title,
+                style: lineStyle,
+                firstLine: false,
+                lastLine: index === sorted.length - 1,
+                originalItemIndex: index,
+              });
+            }
           }
+        } else {
+          console.warn(`Checklist with id ${state.id} is not a valid normal checklist`);
         }
       });
       this.totalLines.set(sorted.length + this.hasDeferred.reduce((acc, val) => acc + (val ? 1 : 0), 0) + 1);
     } else if (
       clState !== null &&
-      EcamNormalProcedures[clStateIntId!] &&
+      EcamNormalProcedures[clStateIndex!] &&
       !deferredProcedureIds.includes(clStateIntId!)
     ) {
       const procGen = new ProcedureLinesGenerator(clState!.id, true, ProcedureType.Normal, clState!);
@@ -138,7 +145,7 @@ export class WdNormalChecklists extends WdAbstractChecklistComponent {
         abnormalProcedure: true,
         sensed: true,
         checked: false,
-        text: `${clState!.procedureCompleted ? '\x1b<7m' : '\x1b<4m'}${EcamNormalProcedures[clStateIntId!].title} \x1bm`,
+        text: `${clState!.procedureCompleted ? '\x1b<7m' : '\x1b<4m'}${EcamNormalProcedures[clStateIndex!].title} \x1bm`,
         style: ChecklistLineStyle.Headline,
         firstLine: true,
         lastLine: false,
