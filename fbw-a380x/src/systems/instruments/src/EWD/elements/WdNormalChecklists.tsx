@@ -1,7 +1,6 @@
 // Copyright (c) 2024-2026 FlyByWire Simulations
 // SPDX-License-Identifier: GPL-3.0
-import { ConsumerSubject, FSComponent, VNode } from '@microsoft/msfs-sdk';
-import { EcamNormalProcedures } from '../../MsfsAvionicsCommon/EcamMessages/NormalProcedures';
+import { ConsumerSubject, ConsumerValue, FSComponent, VNode } from '@microsoft/msfs-sdk';
 import {
   CHECKLIST_OVERVIEW_ID,
   CHECKLIST_OVERVIEW_ID_TEXT,
@@ -9,7 +8,6 @@ import {
   deferredProcedureIds,
   DeferredProcedureType,
   EcamDeferredProcedures,
-  getNormalChecklistProcedureIndex,
 } from '../..//MsfsAvionicsCommon/EcamMessages';
 import { WdAbstractChecklistComponent } from './WdAbstractChecklistComponent';
 import {
@@ -26,6 +24,8 @@ export class WdNormalChecklists extends WdAbstractChecklistComponent {
   private readonly activeDeferredProcedureId = ConsumerSubject.create(this.sub.on('fws_active_procedure'), '0');
 
   private readonly deferred = ConsumerSubject.create(this.sub.on('fws_deferred_procedures'), []);
+
+  private readonly normalProcedures = ConsumerValue.create(this.sub.on('fws_normal_procedures'), []);
 
   /** ALL PHASES, TOP OF DESCENT, FOR APPROACH, FOR LANDING */
   private readonly hasDeferred = [false, false, false, false];
@@ -73,8 +73,10 @@ export class WdNormalChecklists extends WdAbstractChecklistComponent {
       .get()
       .every((p) => EcamDeferredProcedures[p.id]?.type === DeferredProcedureType.FOR_LANDING && p.procedureCompleted);
 
+    const checklistsDefinition = this.normalProcedures.get();
     const clStateIntId = clState !== null ? parseInt(clState.id) : null;
-    const clStateIndex = clStateIntId !== null ? getNormalChecklistProcedureIndex(clStateIntId) : null;
+    const clStateIndex =
+      clStateIntId !== null ? checklistsDefinition.findIndex((proc) => proc.type === clStateIntId) : null;
 
     if (checklistId === CHECKLIST_OVERVIEW_ID) {
       // Render overview page
@@ -92,9 +94,9 @@ export class WdNormalChecklists extends WdAbstractChecklistComponent {
 
       sorted.forEach((state, index) => {
         const intCheckListId = parseInt(state.id);
-        const checklistIndex = getNormalChecklistProcedureIndex(intCheckListId);
-        if (checklistIndex !== null) {
-          if (EcamNormalProcedures[checklistIndex]) {
+        const checklistIndex = checklistsDefinition.findIndex((proc) => proc.type === intCheckListId);
+        if (checklistIndex !== -1) {
+          if (checklistsDefinition[checklistIndex]) {
             let lineStyle: ChecklistLineStyle;
             let checked = false;
             let display = true;
@@ -118,7 +120,7 @@ export class WdNormalChecklists extends WdAbstractChecklistComponent {
                 activeProcedure: true,
                 sensed: true,
                 checked: checked,
-                text: EcamNormalProcedures[checklistIndex].title,
+                text: checklistsDefinition[checklistIndex].title,
                 style: lineStyle,
                 firstLine: false,
                 lastLine: index === sorted.length - 1,
@@ -133,10 +135,11 @@ export class WdNormalChecklists extends WdAbstractChecklistComponent {
       this.totalLines.set(sorted.length + this.hasDeferred.reduce((acc, val) => acc + (val ? 1 : 0), 0) + 1);
     } else if (
       clState !== null &&
-      EcamNormalProcedures[clStateIndex!] &&
+      clStateIndex !== null &&
+      clStateIndex !== -1 &&
       !deferredProcedureIds.includes(clStateIntId!)
     ) {
-      const procGen = new ProcedureLinesGenerator(clState!.id, true, ProcedureType.Normal, clState!);
+      const procGen = new ProcedureLinesGenerator(clState.id, true, ProcedureType.Normal, clState!);
       this.lineData.push(...procGen.toLineData());
     } else if (clState !== null && deferredProcedureIds.includes(clStateIntId!)) {
       // Deferred procedures
@@ -145,7 +148,7 @@ export class WdNormalChecklists extends WdAbstractChecklistComponent {
         abnormalProcedure: true,
         sensed: true,
         checked: false,
-        text: `${clState!.procedureCompleted ? '\x1b<7m' : '\x1b<4m'}${EcamNormalProcedures[clStateIndex!].title} \x1bm`,
+        text: `${clState!.procedureCompleted ? '\x1b<7m' : '\x1b<4m'}${checklistsDefinition[clStateIndex!].title} \x1bm`,
         style: ChecklistLineStyle.Headline,
         firstLine: true,
         lastLine: false,

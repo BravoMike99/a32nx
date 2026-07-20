@@ -1,7 +1,12 @@
 // Copyright (c) 2024-2026 FlyByWire Simulations
 // SPDX-License-Identifier: GPL-3.0
 
-import { ChecklistAction, ChecklistLineStyle, NormalProcedure, NormalProcedureType } from './';
+import {
+  ChecklistAction,
+  ChecklistLineStyle,
+  NormalProcedure,
+  NormalProcedureType,
+} from '../../../../instruments/src/MsfsAvionicsCommon/EcamMessages';
 
 export const LINE_SEPARATOR_CHECKLIST_ITEM: ChecklistAction = {
   name: '',
@@ -289,7 +294,7 @@ export const EcamNormalProcedures: NormalProcedure[] = [
         sensed: true,
       },
     ],
-    type: NormalProcedureType.AFTER_LANDING,
+    type: NormalProcedureType.PARKING,
   },
   {
     title: 'SECURING THE AIRCRAFT',

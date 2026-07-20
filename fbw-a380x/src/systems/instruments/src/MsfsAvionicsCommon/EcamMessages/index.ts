@@ -739,10 +739,8 @@ export interface AbnormalProcedure {
   recommendation?: 'LAND ASAP' | 'LAND ANSA';
 }
 
-const NORMAL_PROCEDURE_TYPE_BASE_ID = 1000001;
-
 export enum NormalProcedureType {
-  COCKPIT_PREPARATION = NORMAL_PROCEDURE_TYPE_BASE_ID,
+  COCKPIT_PREPARATION = 1000001,
   BEFORE_START,
   AFTER_START,
   TAXI_BEFORE_TAKEOFF,
@@ -759,12 +757,6 @@ export enum NormalProcedureType {
   AFTER_LANDING,
   PARKING,
   SECURE,
-}
-
-export function getNormalChecklistProcedureIndex(number: number): number | null {
-  return number >= NormalProcedureType.COCKPIT_PREPARATION && number <= NormalProcedureType.SECURE
-    ? number - NORMAL_PROCEDURE_TYPE_BASE_ID
-    : null;
 }
 
 export const deferredProcedureIds = [

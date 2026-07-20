@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: GPL-3.0
 
+import { NormalProcedure } from '../../../instruments/src/MsfsAvionicsCommon/EcamMessages';
+
 export interface ChecklistState {
   id: string;
   procedureCompleted?: boolean;
@@ -89,4 +91,7 @@ export interface FwsEvents {
 
   /** Show abnormal (amber) attention getter on engine SD for each engine Unused for now */
   fws_abnormal_secondary_engine_parameters_attention_getter: boolean[];
+
+  /** The normal procedures loaded within the fws */
+  fws_normal_procedures: NormalProcedure[];
 }

@@ -15,10 +15,7 @@ import { ChecklistState, FwsEvents } from '../../../shared/src/publishers/FwsPub
 // FIXME circular import
 import { FwsCore } from './FwsCore';
 // FIXME should not import from instruments
-import {
-  EcamNormalProcedures,
-  LINE_SEPARATOR_CHECKLIST_ITEM,
-} from '../../../instruments/src/MsfsAvionicsCommon/EcamMessages/NormalProcedures';
+import { EcamNormalProcedures, LINE_SEPARATOR_CHECKLIST_ITEM } from './EcamChecklists/NormalProcedures';
 // FIXME should not import from instruments
 import {
   CHECKLIST_OVERVIEW_ID,
@@ -30,7 +27,6 @@ import {
   DeferredProcedureType,
   DEPARTURE_CHANGE_NORMAL_CHECKLIST_ID,
   EcamDeferredProcedures,
-  getNormalChecklistProcedureIndex,
   NormalProcedure,
   NormalProcedureType,
   WD_NUM_LINES,
@@ -52,7 +48,7 @@ import {
   isActionItem,
   isHeadlineItem,
   isLineSeparatorItem,
-} from './A380XCustomEcamDefinition';
+} from './EcamChecklists/CustomEcamDefinition';
 
 export interface NormalEclSensedItems {
   /** Returns a boolean vector (same length as number of items). If true, item is marked as completed. If null, it's a non-sensed item */
@@ -232,6 +228,8 @@ export class FwsNormalChecklists {
 
   private defferedLandingProcedureId = 0;
 
+  private readonly normalChecklistsTextDefinition: NormalProcedure[] = EcamNormalProcedures;
+
   private readonly normalChecklistKeysSorted = Object.keys(NormalProcedureType)
     .map((v) => parseInt(v))
     .sort((a, b) => a - b);
@@ -398,6 +396,7 @@ export class FwsNormalChecklists {
   publishInitialState() {
     this.pub.pub('fws_normal_checklists', [], true);
     this.pub.pub('fws_deferred_procedures', [], true);
+    this.pub.pub('fws_normal_procedures', [], true);
   }
 
   selectFirst() {
@@ -490,9 +489,11 @@ export class FwsNormalChecklists {
       for (let id = fromId === undefined ? 0 : fromId + 1; id < ids.length; id++) {
         const idFollowing = ids[id];
         const clFollowing = this.checklistState.getValue(idFollowing);
-        const checkListIndex = getNormalChecklistProcedureIndex(idFollowing);
+        const checkListIndex = this.normalChecklistsTextDefinition.findIndex((proc) => proc.type === idFollowing);
         const procFollowing =
-          checkListIndex !== null && clFollowing !== undefined ? EcamNormalProcedures[checkListIndex] : null;
+          checkListIndex !== -1 && clFollowing !== undefined
+            ? this.normalChecklistsTextDefinition[checkListIndex]
+            : null;
         if (procFollowing && clFollowing) {
           const clStateFollowing: ChecklistState = {
             id: idFollowing.toString(),
@@ -627,8 +628,8 @@ export class FwsNormalChecklists {
       let changed = false;
       const procId = ids[id];
       const cl = this.checklistState.getValue(procId);
-      const idx = getNormalChecklistProcedureIndex(procId);
-      const proc = idx !== null ? EcamNormalProcedures[idx] : null;
+      const idx = this.normalChecklistsTextDefinition.findIndex((proc) => proc.type === procId);
+      const proc = idx !== -1 ? this.normalChecklistsTextDefinition[idx] : null;
 
       if (cl && proc) {
         const deferredProcIndex = deferredProcedureIds.indexOf(procId);
@@ -703,7 +704,12 @@ export class FwsNormalChecklists {
   private initializeChecklistState() {
     // Populate checklistState
     this.normalChecklistKeysSorted.forEach((k) => {
-      const proc = EcamNormalProcedures[getNormalChecklistProcedureIndex(k)!] as NormalProcedure;
+      const idx = this.normalChecklistsTextDefinition.findIndex((proc) => proc.type === k);
+      if (idx === -1) {
+        console.warn(`Normal checklist with id ${k} not found`);
+        return;
+      }
+      const proc = this.normalChecklistsTextDefinition[idx] as NormalProcedure;
       this.checklistState.setValue(k, {
         id: k.toString(),
         procedureCompleted: false,
@@ -931,7 +937,7 @@ export class FwsNormalChecklists {
         sensed: true,
       };
     } else {
-      console.warn('Unknown custom checklist item type', item);
+      console.warn('Unknown custom checklist item type', item.type);
       return null;
     }
   }

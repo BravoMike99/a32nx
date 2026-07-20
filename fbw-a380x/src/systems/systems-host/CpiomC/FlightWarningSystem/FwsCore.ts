@@ -6344,11 +6344,13 @@ export class FwsCore {
     publisher.pub('fws_alerts_impacting_ldg_perf', [], true);
     publisher.pub('fws_inop_sys_redundancy_loss', [], true);
     publisher.pub('fws_cancelled_caution', [], true);
-
     publisher.pub('fws_show_sts_indication', false, true);
     publisher.pub('fws_show_failure_pending', false, true);
     publisher.pub('fws_abnormal_primary_engine_parameters_attention_getter', [false, false, false, false]);
     publisher.pub('fws_normal_attention_getter_eng', [false, false, false, false]);
+    publisher.pub('fws_normal_checklists', [], true);
+    publisher.pub('fws_deferred_procedures', [], true);
+    publisher.pub('fws_normal_procedures', [], true);
   }
 
   private populateCpiomBWords(
