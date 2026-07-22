@@ -408,7 +408,7 @@ export class FwsMemos {
     '335000001': {
       // SEAT BELTS
       flightPhaseInhib: [],
-      simVarIsActive: this.fws.seatBeltSwitchOn,
+      simVarIsActive: this.fws.seatbeltsOn,
       whichCodeToReturn: () => [0],
       codesToReturn: ['335000001'],
       memoInhibit: () => this.fws.toOrLdgMemoActive.get(),
@@ -598,9 +598,9 @@ export class FwsMemos {
       simVarIsActive: this.fws.toMemo.map((t) => !!t),
       whichCodeToReturn: () => [
         0,
-        this.fws.memoSeatbelsOnPin ? (this.fws.seatBeltSwitchOn.get() ? 2 : 1) : this.fws.signsOn.get() ? 3 : 4,
-        (this.fws.spoilersArmed ? 6 : 5) + (this.fws.memoGndSpoilersAsSplrs ? 0 : 2), // Shift 2 depending on gnd spoilers option
-        !this.fws.flapsNotToMemo ? 9 : 10,
+        this.fws.memoSeatbelsOnPin ? (this.fws.seatbeltsOn.get() ? 2 : 1) : this.fws.signsOnOrAuto.get() ? 4 : 3,
+        (this.fws.spoilersArmed ? 6 : 5) + (this.fws.memoGndSpoilersAsSplrs ? 2 : 0), // Shift 2 depending on gnd spoilers option
+        this.fws.flapsNotToMemo ? 9 : 10,
         this.fws.autoBrakeRto ? 12 : 11,
         this.fws.toConfigNormal.get() ? 14 : 13,
       ],
@@ -637,7 +637,7 @@ export class FwsMemos {
       simVarIsActive: this.fws.ldgMemo.map((t) => !!t),
       whichCodeToReturn: () => [
         0,
-        this.fws.memoSeatbelsOnPin ? (this.fws.seatBeltSwitchOn.get() ? 2 : 1) : this.fws.signsOn.get() ? 3 : 4,
+        this.fws.memoSeatbelsOnPin ? (this.fws.seatbeltsOn.get() ? 2 : 1) : this.fws.signsOnOrAuto.get() ? 4 : 3,
         this.fws.isAllGearDownlocked ? 6 : 5,
         // With SPLRs memo, the flaps are shown before the spoilers otherwise the spoilers are shown before the flaps
         this.fws.memoGndSpoilersAsSplrs
