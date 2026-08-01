@@ -92,6 +92,7 @@ import {
 // FIXME should not import from instruments
 import { FcdcSimvars } from '@shared/publishers/FcdcPublisher';
 import { FwsAutoCallouts } from './FwsAutoCallouts';
+import { A380XCustomEcamDefinition } from './EcamDefinition/CustomEcamDefinition';
 
 export function xor(a: boolean, b: boolean): boolean {
   return !!((a ? 1 : 0) ^ (b ? 1 : 0));
@@ -376,20 +377,17 @@ export class FwsCore {
     SimVarValueType.Enum,
   );
 
-  public readonly seatBeltSwitchOn = Subject.create(false);
-
-  public readonly seatBeltSignAuto = Subject.create(false);
+  public readonly seatBeltsOn = Subject.create(false);
 
   public readonly signsOn = MappedSubject.create(
     SubscribableMapFunctions.or(),
-    this.seatBeltSwitchOn,
+    this.seatBeltsOn,
     this.noMobileSwitchOn,
   );
 
   public readonly signsOnOrAuto = MappedSubject.create(
     SubscribableMapFunctions.or(),
     this.signsOn,
-    this.seatBeltSignAuto,
     this.noMobileSwitchAuto,
   );
 
@@ -2141,9 +2139,7 @@ export class FwsCore {
 
   public readonly radioHeight3 = Arinc429Register.empty();
 
-  public readonly memoSeatbelsOnPin = true;
-
-  public readonly memoGndSpoilersAsSplrs = false;
+  public readonly toLdgMemoSignsOn: boolean;
 
   public readonly toMemo = Subject.create(0);
 
@@ -2417,6 +2413,7 @@ export class FwsCore {
     private readonly failuresConsumer: FailuresConsumer,
     public readonly fws1Failed: Subscribable<boolean>,
     public readonly fws2Failed: Subscribable<boolean>,
+    ecamDefinition?: A380XCustomEcamDefinition | null,
   ) {
     this.ewdAbnormal = Object.assign(
       {},
@@ -2566,6 +2563,17 @@ export class FwsCore {
       this.bleedSecondaryFailure,
       this.fmsSwitchingNotNorm,
     );
+    if (ecamDefinition === null) {
+      this.fwsCustomEcamDatabaseRejectedByBothFws = true;
+      this.toLdgMemoSignsOn = false;
+    } else if (ecamDefinition !== undefined) {
+      this.toLdgMemoSignsOn = ecamDefinition.toldgMemoSignsOn;
+      if (ecamDefinition.normalChecklists !== undefined) {
+        this.normalChecklists.buildCustomChecklistState(ecamDefinition.normalChecklists);
+      }
+    } else {
+      this.toLdgMemoSignsOn = false;
+    }
   }
 
   /**
@@ -4576,8 +4584,7 @@ export class FwsCore {
     this.compMesgCount.set(SimVar.GetSimVarValue('L:A32NX_COMPANY_MSG_COUNT', 'number'));
     this.fmsSwitchingKnob.set(SimVar.GetSimVarValue('L:A32NX_FMS_SWITCHING_KNOB', 'enum'));
     const seatBeltSwitchPosition = this.seatBeltSignRegisteredSimvar.get();
-    this.seatBeltSwitchOn.set(seatBeltSwitchPosition === 0);
-    this.seatBeltSignAuto.set(seatBeltSwitchPosition === 1);
+    this.seatBeltsOn.set(seatBeltSwitchPosition === 0);
     this.ndXfrKnob.set(SimVar.GetSimVarValue('L:A32NX_ECAM_ND_XFR_SWITCHING_KNOB', 'enum'));
     const noMobileSwitchPosition = this.noMobileSwitchRegisteredSimvar.get();
     this.noMobileSwitchOn.set(noMobileSwitchPosition === 0);

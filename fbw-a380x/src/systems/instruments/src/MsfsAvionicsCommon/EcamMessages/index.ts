@@ -46,9 +46,6 @@ export const EcamMemos: { [n: string]: string } = {
   // GND SPLRS OPTION
   '000001008': '   \x1b<5m-GND SPLRs ....ARM',
   '000001009': '   \x1b<3m-GND SPLRs ARM',
-  // GND SPRS AS SPLRs OPTION
-  '000001010': '   \x1b<5m-SPLRs .......ARM',
-  '000001011': '   \x1b<3m-SPLRs ARM',
   '000001012': '   \x1b<5m-FLAPS ........T.O',
   '000001013': '   \x1b<3m-FLAPS : T.O',
   '000001015': '   \x1b<5m-AUTO BRK .....RTO',

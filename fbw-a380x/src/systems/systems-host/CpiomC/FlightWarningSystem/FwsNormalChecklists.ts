@@ -15,7 +15,7 @@ import { ChecklistState, FwsEvents } from '../../../shared/src/publishers/FwsPub
 // FIXME circular import
 import { FwsCore } from './FwsCore';
 // FIXME should not import from instruments
-import { EcamNormalProcedures, LINE_SEPARATOR_CHECKLIST_ITEM } from './EcamChecklists/NormalProcedures';
+import { EcamNormalProcedures, LINE_SEPARATOR_CHECKLIST_ITEM } from './EcamDefinition/NormalProcedures';
 // FIXME should not import from instruments
 import {
   CHECKLIST_OVERVIEW_ID,
@@ -23,7 +23,7 @@ import {
   ChecklistAction,
   ChecklistLineStyle,
   ChecklistSpecialItem,
-  deferredProcedureIds,
+  DEFERRED_PROCEDURES_IDS,
   DeferredProcedureType,
   DEPARTURE_CHANGE_NORMAL_CHECKLIST_ID,
   EcamDeferredProcedures,
@@ -48,7 +48,7 @@ import {
   isActionItem,
   isHeadlineItem,
   isLineSeparatorItem,
-} from './EcamChecklists/CustomEcamDefinition';
+} from './EcamDefinition/CustomEcamDefinition';
 
 export interface NormalEclSensedItems {
   /** Returns a boolean vector (same length as number of items). If true, item is marked as completed. If null, it's a non-sensed item */
@@ -60,7 +60,7 @@ export class FwsNormalChecklists {
     [
       NormalProcedureType.COCKPIT_PREPARATION,
       {
-        whichItemsChecked: () => [null, null, this.fws.seatBeltSwitchOn.get(), null],
+        whichItemsChecked: () => [null, null, this.fws.seatBeltsOn.get(), null],
       },
     ],
     [
@@ -83,7 +83,7 @@ export class FwsNormalChecklists {
           null,
           null,
           false,
-          this.fws.seatBeltSwitchOn.get(),
+          this.fws.seatBeltsOn.get(),
           this.fws.spoilersArmed,
           !this.fws.flapsNotToMemo,
           this.fws.autoBrakeRto,
@@ -105,20 +105,20 @@ export class FwsNormalChecklists {
     ],
     [NormalProcedureType.AFTER_TAKEOFF, {}],
     [
-      NormalProcedureType.ALL_PHASES_DEFFERED_PROCEDURE,
+      NormalProcedureType.ALL_PHASES_DEFERRED_PROCEDURE,
       {
         whichItemsChecked: () => [],
       },
     ],
     [
-      NormalProcedureType.BEFORE_TOD_DEFFERED_PROCEDURE,
+      NormalProcedureType.BEFORE_TOD_DEFERRED_PROCEDURE,
       {
         whichItemsChecked: () => [],
       },
     ],
     [NormalProcedureType.DESCENT, {}],
     [
-      NormalProcedureType.BEFORE_APPROACH_DEFFERED_PROCEDURE,
+      NormalProcedureType.BEFORE_APPROACH_DEFERRED_PROCEDURE,
       {
         whichItemsChecked: () => [],
       },
@@ -126,11 +126,11 @@ export class FwsNormalChecklists {
     [
       NormalProcedureType.APPROACH,
       {
-        whichItemsChecked: () => [null, this.fws.seatBeltSwitchOn.get(), null, null],
+        whichItemsChecked: () => [null, this.fws.seatBeltsOn.get(), null, null],
       },
     ],
     [
-      NormalProcedureType.BEFORE_LANDING_DEFFERED_PROCEDURE,
+      NormalProcedureType.BEFORE_LANDING_DEFERRED_PROCEDURE,
       {
         whichItemsChecked: () => [],
       },
@@ -140,7 +140,7 @@ export class FwsNormalChecklists {
       {
         whichItemsChecked: () => [
           false,
-          this.fws.seatBeltSwitchOn.get(),
+          this.fws.seatBeltsOn.get(),
           this.fws.isAllGearDownlocked,
           this.fws.spoilersArmed,
           this.fws.flapsLeverInLandingConfiguration,
@@ -252,7 +252,7 @@ export class FwsNormalChecklists {
     this.subscriptions.push(
       this.checklistId.sub((id) => {
         const clState = this.checklistState.getValue(id);
-        if (id !== 0 && deferredProcedureIds.indexOf(id) === -1 && clState) {
+        if (id !== 0 && DEFERRED_PROCEDURES_IDS.indexOf(id) === -1 && clState) {
           const procGen = new ProcedureLinesGenerator(
             clState.id,
             true,
@@ -280,7 +280,7 @@ export class FwsNormalChecklists {
           this.activeProcedure = procGen;
           this.activeProcedure.selectedItemIndex.pipe(this.selectedLine);
         } else {
-          const deffId = deferredProcedureIds.indexOf(id);
+          const deffId = DEFERRED_PROCEDURES_IDS.indexOf(id);
           if (deffId > -1) {
             this.deferredProcedures = [];
             const currentDeferredType = deffId as DeferredProcedureType;
@@ -419,7 +419,7 @@ export class FwsNormalChecklists {
         .map((_, index) => (this.checklistState.getValue(CHECKLIST_OVERVIEW_ID)?.itemsToShow[index] ? index : null))
         .filter((v) => v !== null);
       this.selectedLine.set(Math.max(shownItems[shownItems.indexOf(this.selectedLine.get()) - 1] ?? 0, 0));
-    } else if (deferredProcedureIds.includes(this.checklistId.get())) {
+    } else if (DEFERRED_PROCEDURES_IDS.includes(this.checklistId.get())) {
       const activeDeferredId = this.activeDeferredProcedureId.get();
       if (activeDeferredId !== null) {
         if (this.activeProcedure?.firstLineIsSelected()) {
@@ -612,7 +612,7 @@ export class FwsNormalChecklists {
         // Navigate to check list
         this.navigateToChecklist(this.normalChecklistKeysSorted[this.selectedLine.get()]);
       } else if (
-        deferredProcedureIds.includes(this.checklistId.get()) &&
+        DEFERRED_PROCEDURES_IDS.includes(this.checklistId.get()) &&
         this.activeDeferredProcedureId.get() === null
       ) {
         this.navigateToChecklist(CHECKLIST_OVERVIEW_ID);
@@ -632,7 +632,7 @@ export class FwsNormalChecklists {
       const proc = idx !== -1 ? this.normalChecklistsTextDefinition[idx] : null;
 
       if (cl && proc) {
-        const deferredProcIndex = deferredProcedureIds.indexOf(procId);
+        const deferredProcIndex = DEFERRED_PROCEDURES_IDS.indexOf(procId);
         const procCompleted =
           deferredProcIndex !== -1 ? this.deferredIsCompleted[deferredProcIndex] : cl.procedureCompleted;
         const sensedResult = this.sensedItems.get(procId)?.whichItemsChecked?.();
@@ -729,16 +729,16 @@ export class FwsNormalChecklists {
 
     // TODO check for error
     this.defferedTodProcedureId = this.normalChecklistKeysSorted.indexOf(
-      NormalProcedureType.BEFORE_TOD_DEFFERED_PROCEDURE,
+      NormalProcedureType.BEFORE_TOD_DEFERRED_PROCEDURE,
     );
     this.defferedCruiseProcedureId = this.normalChecklistKeysSorted.indexOf(
-      NormalProcedureType.ALL_PHASES_DEFFERED_PROCEDURE,
+      NormalProcedureType.ALL_PHASES_DEFERRED_PROCEDURE,
     );
     this.defferedApproachProcedureId = this.normalChecklistKeysSorted.indexOf(
-      NormalProcedureType.BEFORE_APPROACH_DEFFERED_PROCEDURE,
+      NormalProcedureType.BEFORE_APPROACH_DEFERRED_PROCEDURE,
     );
     this.defferedLandingProcedureId = this.normalChecklistKeysSorted.indexOf(
-      NormalProcedureType.BEFORE_LANDING_DEFFERED_PROCEDURE,
+      NormalProcedureType.BEFORE_LANDING_DEFERRED_PROCEDURE,
     );
     const departureChangeIndex = this.normalChecklistKeysSorted.indexOf(NormalProcedureType.DEPARTURE_CHANGE);
     this.departureChangeid = departureChangeIndex != -1 ? departureChangeIndex : undefined;
@@ -780,9 +780,9 @@ export class FwsNormalChecklists {
     } else {
       switch (action.sensed) {
         case A380XCustomChecklistSensedItemType.SEATBELTS_ON:
-          return () => this.fws.seatBeltSwitchOn.get();
+          return () => this.fws.seatBeltsOn.get();
         case A380XCustomChecklistSensedItemType.SEATBELTS_OFF:
-          return () => !this.fws.seatBeltSwitchOn.get();
+          return () => !this.fws.seatBeltsOn.get();
         case A380XCustomChecklistSensedItemType.SIGNS_ON:
           return () => this.fws.signsOn.get();
         case A380XCustomChecklistSensedItemType.SIGNS_OFF:
@@ -835,7 +835,7 @@ export class FwsNormalChecklists {
     }
   }
 
-  private buildCustomChecklistState(customCheclists: A380XCustomNormalChecklist[]): boolean {
+  public buildCustomChecklistState(customCheclists: A380XCustomNormalChecklist[]): boolean {
     const presentChecklists: NormalProcedureType[] = [];
     for (const checklist of customCheclists) {
       // Checked items

@@ -50,9 +50,9 @@ export enum A380XCustomChecklistSensedItemType {
 }
 
 export enum A380xCustomChecklistItemType {
-  LINE_SEPARATOR,
-  ACTION,
-  HEADLINE,
+  LINE_SEPARATOR = 'LINE',
+  ACTION = 'ACTION',
+  HEADLINE = 'HEADLINE',
 }
 
 export interface A380xCustomNormalChecklistItem {
@@ -93,10 +93,10 @@ export interface A380XCustomChecklistItemAction extends A380xCustomNormalCheckli
   /** If specified, the item will be automatically sensed against the condition */
   sensed?: A380XCustomChecklistSensedItemType;
   /** If true, the item will be shifted to the left */
-  subLevel?: boolean;
+  subLevel: boolean;
 
-  /** If true, a colon will be displayed after the item's label when it is completed. Defaults to true */
-  colonIfCompleted?: boolean;
+  /** If true, a colon will be displayed after the item's label when it is completed.*/
+  colonIfCompleted: boolean;
 }
 
 /** The definition of a custom normal checklist, containing it's title, the items and the type */
@@ -113,10 +113,7 @@ export interface A380XCustomNormalChecklist {
 
 export interface A380XCustomEcamDefinition {
   /** Whether to display the TO/LDG memo with SIGNS ON instead of SEAT BELTS ON */
-  toldgMemoSignsOn?: boolean;
-
-  /** Whether to display the GND SPLRs as SPLRs in the T.O and LDG MEMOs. If so, they will be shown before the flaps on the landing checklist */
-  memoGndSplrsAsSplrs?: boolean;
+  toldgMemoSignsOn: boolean;
 
   /** The normal checklists for the aircraft */
   normalChecklists?: A380XCustomNormalChecklist[];

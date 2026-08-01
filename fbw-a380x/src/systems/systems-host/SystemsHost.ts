@@ -72,6 +72,8 @@ import { FmsSymbolsPublisher } from '../instruments/src/ND/FmsSymbolsPublisher';
 // FIXME should not import from instruments
 import { FmsMessagePublisher } from '../instruments/src/MsfsAvionicsCommon/providers/FmsMessagePublisher';
 import { FqmsBusPublisher } from '@shared/publishers/FqmsBusPublisher';
+import { CustomEcamDefinitionPraser } from './CpiomC/FlightWarningSystem/EcamDefinition/CustomEcamDefinitionParser';
+import { A380XCustomEcamDefinition } from './CpiomC/FlightWarningSystem/EcamDefinition/CustomEcamDefinition';
 
 class SystemsHost extends BaseInstrument {
   private readonly bus = new ArincEventBus();
@@ -180,19 +182,15 @@ class SystemsHost extends BaseInstrument {
     this.fws2Failed,
   );
 
-  private fwsCore: FwsCore | undefined = new FwsCore(
-    1,
-    this.bus,
-    this.failuresConsumer,
-    this.fws1Failed,
-    this.fws2Failed,
-  );
+  private fwsCore: FwsCore | undefined;
 
   //FIXME add some deltatime functionality to backplane instruments so we dont have to pass SystemHost
   private readonly legacyFuel = new LegacyFuel(this.bus, this);
 
   // FIXME delete this when PRIM gets the THS auto trim
   private readonly autoThsTrimmer = new AutoThsTrimmer(this.bus, this);
+
+  private readonly customFwsEcamDefinition: A380XCustomEcamDefinition | null | undefined;
 
   /**
    * "mainmenu" = 0
@@ -245,6 +243,15 @@ class SystemsHost extends BaseInstrument {
     this.hEventPublisher = new HEventPublisher(this.bus);
     this.soundManager = new LegacySoundManager();
     this.gpws = new LegacyGpws(this.bus, this.soundManager);
+    this.customFwsEcamDefinition = new CustomEcamDefinitionPraser(this.xmlConfig, this.bus).parseConfig();
+    this.fwsCore = new FwsCore(
+      1,
+      this.bus,
+      this.failuresConsumer,
+      this.fws1Failed,
+      this.fws2Failed,
+      this.customFwsEcamDefinition,
+    );
     this.gpws.init();
 
     this.backplane.addInstrument('TcasComputer', new LegacyTcasComputer(this.bus, this.soundManager));
@@ -271,7 +278,14 @@ class SystemsHost extends BaseInstrument {
         this.fwsCore = undefined;
         FwsCore.sendFailureWarning(this.bus);
       } else if (!a && this.fwsCore === undefined) {
-        this.fwsCore = new FwsCore(1, this.bus, this.failuresConsumer, this.fws1Failed, this.fws2Failed);
+        this.fwsCore = this.fwsCore = new FwsCore(
+          1,
+          this.bus,
+          this.failuresConsumer,
+          this.fws1Failed,
+          this.fws2Failed,
+          this.customFwsEcamDefinition,
+        );
       }
     }, true);
 

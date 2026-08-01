@@ -26,7 +26,7 @@ import {
   DEPATURE_CHANGE_NORMAL_CHECKLIST_ID_TEXT,
   getNormalChecklistProcedureIndex,
 } from './';
-import { EcamNormalProcedures } from '../../../../systems-host/CpiomC/FlightWarningSystem/EcamChecklists/NormalProcedures';
+import { EcamNormalProcedures } from '../../../../systems-host/CpiomC/FlightWarningSystem/EcamDefinition/NormalProcedures';
 import { ChecklistState } from '../../../../shared/src/publishers/FwsPublisher';
 
 export enum ProcedureType {

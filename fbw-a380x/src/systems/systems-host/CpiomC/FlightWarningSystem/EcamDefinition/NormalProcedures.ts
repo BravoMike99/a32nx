@@ -194,17 +194,17 @@ export const EcamNormalProcedures: NormalProcedure[] = [
   {
     title: 'ALL PHASES : DEFERRED PROCEDURE',
     items: [],
-    type: NormalProcedureType.ALL_PHASES_DEFFERED_PROCEDURE,
+    type: NormalProcedureType.ALL_PHASES_DEFERRED_PROCEDURE,
   },
   {
     title: 'AT TOP OF DESCENT : DEFERRED PROCEDURE',
     items: [],
-    type: NormalProcedureType.BEFORE_TOD_DEFFERED_PROCEDURE,
+    type: NormalProcedureType.BEFORE_TOD_DEFERRED_PROCEDURE,
   },
   {
     title: 'FOR APPROACH : DEFERRED PROCEDURE',
     items: [],
-    type: NormalProcedureType.BEFORE_APPROACH_DEFFERED_PROCEDURE,
+    type: NormalProcedureType.BEFORE_APPROACH_DEFERRED_PROCEDURE,
   },
   {
     title: 'APPROACH',
@@ -236,7 +236,7 @@ export const EcamNormalProcedures: NormalProcedure[] = [
   {
     title: 'FOR LANDING : DEFERRED PROCEDURE',
     items: [],
-    type: NormalProcedureType.BEFORE_LANDING_DEFFERED_PROCEDURE,
+    type: NormalProcedureType.BEFORE_LANDING_DEFERRED_PROCEDURE,
   },
   {
     title: 'LANDING',
