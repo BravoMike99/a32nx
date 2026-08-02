@@ -88,7 +88,8 @@ export interface A380XCustomChecklistItemAction extends A380xCustomNormalCheckli
   /** The label when the item is completed. If not specified, it will default to the same as labelNotCompleted */
   labelCompleted?: string;
 
-  /** If specified, the item will be hidden unless the sensed condition is true */
+  // TODO implement:
+  /** If specified, the item will be hidden unless the sensed condition is true. */
   visibleWhen?: A380XCustomChecklistSensedItemType;
   /** If specified, the item will be automatically sensed against the condition */
   sensed?: A380XCustomChecklistSensedItemType;

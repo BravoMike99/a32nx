@@ -163,7 +163,7 @@ export class FwsAbnormalSensed {
           if (type === SubscribableMapEventType.Added) {
             const procGen = new ProcedureLinesGenerator(
               value.id,
-              this.activeProcedureId.map((id) => value.id === id),
+              this.activeProcedureId.map((id) => value.id === id).get(),
               ProcedureType.Abnormal,
               value,
               (newState) => this.fws.presentedAbnormalProceduresList.setValue(value.id, newState),

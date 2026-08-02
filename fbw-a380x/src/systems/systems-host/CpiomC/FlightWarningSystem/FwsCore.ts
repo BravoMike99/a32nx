@@ -2563,16 +2563,18 @@ export class FwsCore {
       this.bleedSecondaryFailure,
       this.fmsSwitchingNotNorm,
     );
-    if (ecamDefinition === null) {
+
+    if (
+      ecamDefinition === null ||
+      (ecamDefinition !== undefined &&
+        ecamDefinition.normalChecklists !== undefined &&
+        !this.normalChecklists.buildCustomChecklistState(ecamDefinition.normalChecklists))
+    ) {
+      this.fwsCustomEcamDatabaseRejected.set(true);
       this.fwsCustomEcamDatabaseRejectedByBothFws = true;
       this.toLdgMemoSignsOn = false;
-    } else if (ecamDefinition !== undefined) {
-      this.toLdgMemoSignsOn = ecamDefinition.toldgMemoSignsOn;
-      if (ecamDefinition.normalChecklists !== undefined) {
-        this.normalChecklists.buildCustomChecklistState(ecamDefinition.normalChecklists);
-      }
     } else {
-      this.toLdgMemoSignsOn = false;
+      this.toLdgMemoSignsOn = ecamDefinition?.toldgMemoSignsOn ?? false;
     }
   }
 

@@ -37,7 +37,7 @@ import {
   ProcedureType,
   SPECIAL_INDEX_DEFERRED_PAGE_CLEAR,
 } from '../../../instruments/src/MsfsAvionicsCommon/EcamMessages/ProcedureLinesGenerator';
-import { NXLogicMemoryNode, RegisteredSimVar } from '@flybywiresim/fbw-sdk';
+import { logTroubleshootingError, NXLogicMemoryNode, RegisteredSimVar } from '@flybywiresim/fbw-sdk';
 import { FwcFlightPhase } from './FwsFlightPhases';
 import {
   A380XCustomNormalChecklistType,
@@ -850,8 +850,11 @@ export class FwsNormalChecklists {
         return false;
       }
     }
-    // Remove any checklists that are not present in the custom checklist definition
+    // Remove any checklists that are not present in the custom checklist definition as long as they aren't deffered procedures.
     for (const checklist of this.normalChecklistKeysSorted) {
+      if (DEFERRED_PROCEDURES_IDS.indexOf(checklist) !== -1) {
+        continue;
+      }
       if (!presentChecklists.includes(checklist)) {
         this.sensedItems.get(checklist)!.whichItemsChecked = undefined;
       }
@@ -926,7 +929,7 @@ export class FwsNormalChecklists {
         labelNotCompleted: item.labelNotCompleted,
         labelCompleted: item.labelCompleted,
         level: item.subLevel ? 1 : 0,
-        colonIfCompleted: item.colonIfCompleted ?? true,
+        colonIfCompleted: item.colonIfCompleted,
       };
     } else if (isLineSeparatorItem(item)) {
       return LINE_SEPARATOR_CHECKLIST_ITEM;
@@ -938,6 +941,10 @@ export class FwsNormalChecklists {
       };
     } else {
       console.warn('Unknown custom checklist item type', item.type);
+      logTroubleshootingError(
+        this.fws.bus,
+        'Custom ecam database rejected by FWS due to unknown checklist item type ' + item.type,
+      );
       return null;
     }
   }

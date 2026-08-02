@@ -10,6 +10,7 @@ import {
   A380XCustomNormalChecklist,
   A380xCustomNormalChecklistItem,
   A380XCustomNormalChecklistType,
+  MAX_NUMBER_CHECKLIST_ITEMS,
   MAX_NUMBER_CHECKLISTS,
 } from './CustomEcamDefinition';
 import { logTroubleshootingError } from '@flybywiresim/fbw-sdk';
@@ -35,6 +36,7 @@ export class CustomEcamDefinitionPraser {
   static readonly CHECKLIST_ITEM_LABEL_COMPLETED_KEY = 'LabelCompleted';
   static readonly CHECKLIST_ITEM_SUBLEVEL_KEY = 'SubLevel';
   static readonly CHECKLIST_ITEM_COLON_IF_COMPLETED_KEY = 'ColonIfCompleted';
+  static readonly CHECKLIST_ITEM_VISIBILITY_CONDITION_KEY = 'VisibilityCondition';
 
   constructor(
     readonly xmlConfig: Document,
@@ -92,6 +94,9 @@ export class CustomEcamDefinitionPraser {
         throw new Error(`Non unique checklist in ecam definition. name:${name} type:${type}`);
       }
       const items = ConfigParser.getChildElements(checkListElement, CustomEcamDefinitionPraser.CHECKLIST_ITEMS_KEY);
+      if (items.length >= MAX_NUMBER_CHECKLIST_ITEMS) {
+        throw new Error(`Max number of checklist items exceeded in checklist ${name} - ${items.length}`);
+      }
       checklists.push({
         title: name,
         type: type,
@@ -158,6 +163,22 @@ export class CustomEcamDefinitionPraser {
             0,
           false,
         );
+
+        const hasVisibilityCondition = ConfigParser.optional(
+          () =>
+            ConfigParser.getStringAttrValue(element, CustomEcamDefinitionPraser.CHECKLIST_ITEM_VISIBILITY_CONDITION_KEY)
+              .length > 0,
+          false,
+        );
+
+        const visibleWhen = hasVisibilityCondition
+          ? ConfigParser.getEnumAttrValue(
+              element,
+              CustomEcamDefinitionPraser.CHECKLIST_ITEM_VISIBILITY_CONDITION_KEY,
+              Object.values(A380XCustomChecklistSensedItemType),
+            )
+          : undefined;
+
         let sensedItem: A380XCustomChecklistSensedItemType | undefined = undefined;
         if (isSensed) {
           sensedItem = ConfigParser.getEnumAttrValue(
@@ -175,6 +196,7 @@ export class CustomEcamDefinitionPraser {
           colonIfCompleted: colonIfCompleted,
           sensed: sensedItem,
           type: A380xCustomChecklistItemType.ACTION,
+          visibleWhen: visibleWhen,
         };
         return actionItem;
       }
