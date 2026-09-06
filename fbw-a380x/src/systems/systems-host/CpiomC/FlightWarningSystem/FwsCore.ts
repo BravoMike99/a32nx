@@ -1011,7 +1011,7 @@ export class FwsCore {
     this.flapLeverFull,
   );
 
-  private readonly landingConfig3Selected = RegisteredSimVar.createBoolean('L:A32NX_SPEEDS_LANDING_CONF3');
+  private readonly landingConfig3Selected = RegisteredSimVar.createBoolean('L:A380X_FM_LANDING_CONF3');
 
   public flapsLeverInLandingConfiguration = false;
 
