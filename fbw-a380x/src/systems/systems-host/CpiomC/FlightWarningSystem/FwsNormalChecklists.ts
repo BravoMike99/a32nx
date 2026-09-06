@@ -10,12 +10,10 @@ import {
   SubscribableMapFunctions,
   Subscription,
 } from '@microsoft/msfs-sdk';
-// FIXME should not import from instruments
 import { ChecklistState, FwsEvents } from '../../../shared/src/publishers/FwsPublisher';
 // FIXME circular import
 import { FwsCore } from './FwsCore';
-// FIXME should not import from instruments
-import { EcamNormalProcedures, LINE_SEPARATOR_CHECKLIST_ITEM } from './EcamDefinition/NormalProcedures';
+import { DEFAULT_ECAM_NORMAL_PROCEDURES, LINE_SEPARATOR_CHECKLIST_ITEM } from './EcamDefinition/NormalProcedures';
 // FIXME should not import from instruments
 import {
   CHECKLIST_OVERVIEW_ID,
@@ -37,7 +35,13 @@ import {
   ProcedureType,
   SPECIAL_INDEX_DEFERRED_PAGE_CLEAR,
 } from '../../../instruments/src/MsfsAvionicsCommon/EcamMessages/ProcedureLinesGenerator';
-import { logTroubleshootingError, NXLogicMemoryNode, RegisteredSimVar } from '@flybywiresim/fbw-sdk';
+import {
+  logTroubleshootingError,
+  NXLogicMemoryNode,
+  NXLogicPulseNode,
+  NXLogicTriggeredMonostableNode,
+  RegisteredSimVar,
+} from '@flybywiresim/fbw-sdk';
 import { FwcFlightPhase } from './FwsFlightPhases';
 import {
   A380XCustomNormalChecklistType,
@@ -228,11 +232,16 @@ export class FwsNormalChecklists {
 
   private defferedLandingProcedureId = 0;
 
-  private readonly normalChecklistsTextDefinition: NormalProcedure[] = EcamNormalProcedures;
+  private readonly normalChecklistsTextDefinition: NormalProcedure[] = DEFAULT_ECAM_NORMAL_PROCEDURES;
 
-  private readonly normalChecklistKeysSorted = Object.keys(NormalProcedureType)
-    .map((v) => parseInt(v))
+  private readonly normalChecklistKeysSorted = Object.values(NormalProcedureType)
+    .filter((v) => typeof v === 'number')
     .sort((a, b) => a - b);
+
+  /** If true, blocks further interactions with the normal checklists until the confirmation time elapses. */
+  private normalChecklistBeingCompleted = false;
+  private readonly normalChecklistCompletedMtrigPulse = new NXLogicPulseNode(false);
+  private readonly normalChecklistBeingCompletedMtrig = new NXLogicTriggeredMonostableNode(1);
 
   constructor(private fws: FwsCore) {
     this.initializeChecklistState();
@@ -266,16 +275,12 @@ export class FwsNormalChecklists {
               this.reset(this.normalChecklistKeysSorted.findIndex((v) => v === this.checklistId.get()));
             },
             (newState) => {
-              this.showChecklistRequested.set(false);
-              if (id === DEPARTURE_CHANGE_NORMAL_CHECKLIST_ID) {
-                // If departure change checklist is completed.. reset it so all items are unchecked and title is blue.
-                newState.procedureCompleted = false;
-                for (let i = 0; i < newState.itemsChecked.length; i++) {
-                  newState.itemsChecked[i] = false;
-                }
-              }
+              this.normalChecklistBeingCompleted = true;
               this.checklistState.setValue(this.checklistId.get(), newState);
             },
+            undefined,
+            false,
+            this.normalChecklistsTextDefinition,
           );
           this.activeProcedure = procGen;
           this.activeProcedure.selectedItemIndex.pipe(this.selectedLine);
@@ -553,7 +558,30 @@ export class FwsNormalChecklists {
     }
   }
 
-  update() {
+  update(deltaTime: number) {
+    const normalChecklistMtrig = this.normalChecklistBeingCompletedMtrig.write(
+      this.normalChecklistBeingCompleted,
+      deltaTime,
+    );
+    const normalChecklistPulse = this.normalChecklistCompletedMtrigPulse.write(normalChecklistMtrig);
+    if (normalChecklistPulse) {
+      const checkListId = this.checklistId.get();
+      const checkListState = this.checklistState.getValue(checkListId);
+      this.showChecklistRequested.set(false);
+      if (checkListState !== undefined) {
+        if (checkListId === DEPARTURE_CHANGE_NORMAL_CHECKLIST_ID) {
+          // If departure change checklist is completed.. reset it so all items are unchecked and title is blue.
+          checkListState.procedureCompleted = false;
+          for (let i = 0; i < checkListState.itemsChecked.length; i++) {
+            checkListState.itemsChecked[i] = false;
+          }
+          this.checklistState.setValue(checkListId, checkListState);
+        }
+      }
+    } else if (normalChecklistMtrig) {
+      return;
+    }
+
     if (this.fws.clPulseNode.read()) {
       this.navigateToChecklist(CHECKLIST_OVERVIEW_ID);
       this.showChecklistRequested.set(!this.showChecklistRequested.get());

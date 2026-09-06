@@ -15,9 +15,9 @@ export const LINE_SEPARATOR_CHECKLIST_ITEM: ChecklistAction = {
   sensed: true,
 };
 
-/** All normal procedures (checklists, via ECL) should be here.
+/** The default normal procedures loaded by the ECL.
  * Display is ordered by type value, ascending. */
-export const EcamNormalProcedures: NormalProcedure[] = [
+export const DEFAULT_ECAM_NORMAL_PROCEDURES: NormalProcedure[] = [
   {
     title: 'COCKPIT PREPARATION',
     items: [

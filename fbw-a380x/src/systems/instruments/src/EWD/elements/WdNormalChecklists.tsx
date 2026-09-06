@@ -5,7 +5,7 @@ import {
   CHECKLIST_OVERVIEW_ID,
   CHECKLIST_OVERVIEW_ID_TEXT,
   ChecklistLineStyle,
-  deferredProcedureIds,
+  DEFERRED_PROCEDURES_IDS,
   DeferredProcedureType,
   EcamDeferredProcedures,
 } from '../..//MsfsAvionicsCommon/EcamMessages';
@@ -100,7 +100,7 @@ export class WdNormalChecklists extends WdAbstractChecklistComponent {
             let lineStyle: ChecklistLineStyle;
             let checked = false;
             let display = true;
-            const defferedIndex = deferredProcedureIds.findIndex((p) => p === intCheckListId);
+            const defferedIndex = DEFERRED_PROCEDURES_IDS.findIndex((p) => p === intCheckListId);
             if (defferedIndex > -1) {
               checked = this.deferredIsCompleted[defferedIndex];
               display = this.hasDeferred[defferedIndex];
@@ -137,11 +137,11 @@ export class WdNormalChecklists extends WdAbstractChecklistComponent {
       clState !== null &&
       clStateIndex !== null &&
       clStateIndex !== -1 &&
-      !deferredProcedureIds.includes(clStateIntId!)
+      !DEFERRED_PROCEDURES_IDS.includes(clStateIntId!)
     ) {
       const procGen = new ProcedureLinesGenerator(clState.id, true, ProcedureType.Normal, clState!);
       this.lineData.push(...procGen.toLineData());
-    } else if (clState !== null && deferredProcedureIds.includes(clStateIntId!)) {
+    } else if (clState !== null && DEFERRED_PROCEDURES_IDS.includes(clStateIntId!)) {
       // Deferred procedures
       this.lineData.push({
         activeProcedure: true,
@@ -164,7 +164,7 @@ export class WdNormalChecklists extends WdAbstractChecklistComponent {
         lastLine: false,
       });
 
-      const defferedIndex = deferredProcedureIds.indexOf(clStateIntId!);
+      const defferedIndex = DEFERRED_PROCEDURES_IDS.indexOf(clStateIntId!);
 
       const currentDeferredType = defferedIndex !== -1 ? (defferedIndex as DeferredProcedureType) : null;
       const visibleDeferred = this.deferred

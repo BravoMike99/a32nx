@@ -15,6 +15,7 @@ import {
   StallWarningPublisher,
   SimVarValueType,
   Subject,
+  ConfigParser,
 } from '@microsoft/msfs-sdk';
 import { LegacyGpws } from './Misc/LegacyGpws';
 import { LegacyFuel } from './CpiomF/LegacyFuel';
@@ -190,7 +191,7 @@ class SystemsHost extends BaseInstrument {
   // FIXME delete this when PRIM gets the THS auto trim
   private readonly autoThsTrimmer = new AutoThsTrimmer(this.bus, this);
 
-  private readonly customFwsEcamDefinition: A380XCustomEcamDefinition | null | undefined;
+  private customFwsEcamDefinition: A380XCustomEcamDefinition | null | undefined;
 
   /**
    * "mainmenu" = 0
@@ -243,15 +244,6 @@ class SystemsHost extends BaseInstrument {
     this.hEventPublisher = new HEventPublisher(this.bus);
     this.soundManager = new LegacySoundManager();
     this.gpws = new LegacyGpws(this.bus, this.soundManager);
-    this.customFwsEcamDefinition = new CustomEcamDefinitionPraser(this.xmlConfig, this.bus).parseConfig();
-    this.fwsCore = new FwsCore(
-      1,
-      this.bus,
-      this.failuresConsumer,
-      this.fws1Failed,
-      this.fws2Failed,
-      this.customFwsEcamDefinition,
-    );
     this.gpws.init();
 
     this.backplane.addInstrument('TcasComputer', new LegacyTcasComputer(this.bus, this.soundManager));
@@ -330,6 +322,15 @@ class SystemsHost extends BaseInstrument {
     this.failuresConsumer.register(A380Failure.FwsEcp);
 
     this.backplane.init();
+    this.customFwsEcamDefinition = new CustomEcamDefinitionPraser(this.xmlConfig, this.bus).parseConfig();
+    this.fwsCore = new FwsCore(
+      1,
+      this.bus,
+      this.failuresConsumer,
+      this.fws1Failed,
+      this.fws2Failed,
+      this.customFwsEcamDefinition,
+    );
   }
 
   public Update(): void {

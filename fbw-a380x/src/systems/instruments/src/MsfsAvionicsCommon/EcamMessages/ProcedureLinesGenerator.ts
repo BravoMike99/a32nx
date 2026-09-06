@@ -23,10 +23,8 @@ import {
   AbstractChecklistItem,
   WdSpecialLine,
   WD_LINE_CHARACTERS,
-  DEPATURE_CHANGE_NORMAL_CHECKLIST_ID_TEXT,
-  getNormalChecklistProcedureIndex,
+  DEPARTURE_CHANGE_NORMAL_CHECKLIST_ID_TEXT,
 } from './';
-import { EcamNormalProcedures } from '../../../../systems-host/CpiomC/FlightWarningSystem/EcamDefinition/NormalProcedures';
 import { ChecklistState } from '../../../../shared/src/publishers/FwsPublisher';
 
 export enum ProcedureType {
@@ -74,14 +72,15 @@ export class ProcedureLinesGenerator {
     private procedureCompletedCallback?: (newState: ChecklistState) => void,
     private recommendation?: 'LAND ASAP' | 'LAND ANSA' | undefined,
     private isLastProcedure: boolean = false,
+    private normalChecklists?: NormalProcedure[],
   ) {
     if (type === ProcedureType.Normal) {
-      const idx = getNormalChecklistProcedureIndex(parseInt(procedureId));
+      const idx = this.normalChecklists?.findIndex((p) => p.type === parseInt(procedureId));
       if (idx == null) {
         console.warn(`ProcedureId ${procedureId} is not a valid normal checklist procedure id`);
         return;
       }
-      this.procedure = EcamNormalProcedures[idx];
+      this.procedure = this.normalChecklists![idx];
     } else if (type === ProcedureType.Abnormal) {
       this.procedure = EcamAbnormalProcedures[procedureId];
     } else if (type === ProcedureType.Deferred) {
@@ -566,7 +565,7 @@ export class ProcedureLinesGenerator {
           activeProcedure: this.procedureIsActive,
           sensed: false,
           checked: this.checklistState.procedureCompleted ?? false,
-          text: `C/L COMPLETE${this.procedureId === DEPATURE_CHANGE_NORMAL_CHECKLIST_ID_TEXT ? ' AND RESET' : ''}`.padStart(
+          text: `C/L COMPLETE${this.procedureId === DEPARTURE_CHANGE_NORMAL_CHECKLIST_ID_TEXT ? ' AND RESET' : ''}`.padStart(
             39,
             '\xa0',
           ),

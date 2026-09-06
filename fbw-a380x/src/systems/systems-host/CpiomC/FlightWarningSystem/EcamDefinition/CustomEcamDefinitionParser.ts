@@ -44,12 +44,14 @@ export class CustomEcamDefinitionPraser {
   ) {}
 
   public parseConfig(): A380XCustomEcamDefinition | null | undefined {
-    const configElement = ConfigParser.optional(
-      () => ConfigParser.getChildElement(this.xmlConfig.documentElement, CustomEcamDefinitionPraser.CONFIG_TAG_NAME),
-      null,
+    console.log(this.xmlConfig.documentElement.textContent);
+    const configElement = ConfigParser.getChildElement(
+      this.xmlConfig.documentElement,
+      CustomEcamDefinitionPraser.CONFIG_TAG_NAME,
     );
 
     if (configElement === null) {
+      console.log('Config element is null... Skipping');
       return undefined;
     }
 

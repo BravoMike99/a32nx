@@ -3566,9 +3566,9 @@ export class FwsAbnormalSensed {
       flightPhaseInhib: [],
       simVarIsActive: this.fws.fwsCustomEcamDatabaseRejectedEcam,
       whichItemsToShow: () => [
-        this.fws.fwsCustomEcamDatabaseRejectedByFws1,
-        this.fws.fwsCustomEcamDatabaseRejectedByFws2,
-        this.fws.fwsCustomEcamDatabaseRejectedByBothFws,
+        this.fws.fwsCustomEcamDatabaseRejectedByFws1 && !this.fws.fwsCustomEcamDatabaseRejectedByFws2,
+        this.fws.fwsCustomEcamDatabaseRejectedByFws2 && !this.fws.fwsCustomEcamDatabaseRejectedByFws1,
+        this.fws.fwsCustomEcamDatabaseRejectedByFws1 && this.fws.fwsCustomEcamDatabaseRejectedByFws2,
       ],
       whichItemsChecked: () => [false, false, false],
       sysPage: SdPages.None,

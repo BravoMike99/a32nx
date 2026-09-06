@@ -165,6 +165,9 @@ export class FwsCore {
 
   public readonly startupCompleted = Subject.create(false);
 
+  // Until
+  private readonly oisDataUpdateThrottler = new UpdateThrottler(5000);
+
   public readonly debugDataToOisEnabled = ConsumerSubject.create(
     this.sub.on('a380x_ois_fws_debug_data_enabled'),
     false,
@@ -178,6 +181,7 @@ export class FwsCore {
     { label: 'All Current Failures', value: '' },
     { label: 'Presented Failures', value: '' },
     { label: 'On Ground', value: '' },
+    { label: 'Custom ECAM configuration loaded', value: '' },
   ];
   public readonly debugDataToOisSubject = Subject.create<DebugDataTableRow[]>([]);
 
@@ -1568,6 +1572,8 @@ export class FwsCore {
   /** If one of the ADR's CAS is above V1 - 4kts, confirm for 0.3s */
   public readonly v1SpeedConfirmNode = new NXLogicConfirmNode(0.3);
 
+  private readonly customDatabaseLoaded: boolean = false;
+
   private readonly fwsCustomEcamDatabaseRejected = Subject.create(false);
 
   public readonly fwsCustomEcamDatabaseRejectedEcam = MappedSubject.create(
@@ -1576,9 +1582,8 @@ export class FwsCore {
     this.flightPhase,
   );
 
-  public fwsCustomEcamDatabaseRejectedByFws1 = false;
-  public fwsCustomEcamDatabaseRejectedByFws2 = false;
-  public fwsCustomEcamDatabaseRejectedByBothFws = false;
+  public readonly fwsCustomEcamDatabaseRejectedByFws1: boolean = false;
+  public readonly fwsCustomEcamDatabaseRejectedByFws2: boolean = false;
 
   /* LANDING GEAR AND LIGHTS */
 
@@ -2571,10 +2576,12 @@ export class FwsCore {
         !this.normalChecklists.buildCustomChecklistState(ecamDefinition.normalChecklists))
     ) {
       this.fwsCustomEcamDatabaseRejected.set(true);
-      this.fwsCustomEcamDatabaseRejectedByBothFws = true;
+      this.fwsCustomEcamDatabaseRejectedByFws1 = true;
+      this.fwsCustomEcamDatabaseRejectedByFws2 = true;
       this.toLdgMemoSignsOn = false;
     } else {
       this.toLdgMemoSignsOn = ecamDefinition?.toldgMemoSignsOn ?? false;
+      this.customDatabaseLoaded = ecamDefinition !== undefined;
     }
   }
 
@@ -6212,13 +6219,13 @@ export class FwsCore {
       );
     }
 
-    this.normalChecklists.update();
+    this.normalChecklists.update(deltaTime);
     this.abnormalSensed.update();
     this.abnormalNonSensed.update();
     this.systemDisplayLogic.update(deltaTime);
     this.autoCallouts.update(deltaTime, this.soundManager.getKeepMaxReversePlayed());
 
-    if (this.debugDataToOisEnabled.get()) {
+    if (this.debugDataToOisEnabled.get() && this.oisDataUpdateThrottler.canUpdate(deltaTime)) {
       this.updateOisDebugData();
     }
 
@@ -6325,6 +6332,7 @@ export class FwsCore {
     this.debugDataToOis[3].value = this.allCurrentFailures.length.toString();
     this.debugDataToOis[4].value = this.presentedFailures.length.toString();
     this.debugDataToOis[5].value = this.aircraftOnGround.get() ? 'true' : 'false';
+    this.debugDataToOis[6].value = this.customDatabaseLoaded ? 'true' : 'false';
 
     this.debugDataToOisSubject.set(this.debugDataToOis);
     this.debugDataToOisSubject.notify();
