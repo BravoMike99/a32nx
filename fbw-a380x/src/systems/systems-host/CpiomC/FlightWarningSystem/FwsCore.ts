@@ -1741,6 +1741,12 @@ export class FwsCore {
   public ir3ExcessMotion = false;
   public irInAlignProblem = false;
 
+  public ir1InAttAlign = false;
+  public ir2InAttAlign = false;
+  public ir3InAttAlign = false;
+  public oneOrTwoIrsInAttAlignMemo = Subject.create(false);
+  public allIrsInAttAlignMemo = Subject.create(false);
+
   private ir3UsedLeft = false;
   private ir3UsedRight = false;
 
@@ -3481,16 +3487,13 @@ export class FwsCore {
     const adr1PressureAltitude = this.adr1Altitude.get();
     const adr2PressureAltitude = this.adr2Altitude.get();
     const adr3PressureAltitude = this.adr3Altitude.get();
+    const ir1Pitch = this.ir1Pitch.get();
+    const ir2Pitch = this.ir2Pitch.get();
+    const ir3Pitch = this.ir3Pitch.get();
 
-    this.ir1Fault.set(
-      !flightPhase112 && (this.ir1Pitch.get().isFailureWarning() || ir1MaintenanceWord.bitValueOr(9, true)),
-    );
-    this.ir2Fault.set(
-      !flightPhase112 && (this.ir2Pitch.get().isFailureWarning() || ir2MaintenanceWord.bitValueOr(9, true)),
-    );
-    this.ir3Fault.set(
-      !flightPhase112 && (this.ir3Pitch.get().isFailureWarning() || ir3MaintenanceWord.bitValueOr(9, true)),
-    );
+    this.ir1Fault.set(!flightPhase112 && (ir1Pitch.isFailureWarning() || ir1MaintenanceWord.bitValueOr(9, true)));
+    this.ir2Fault.set(!flightPhase112 && (ir2Pitch.isFailureWarning() || ir2MaintenanceWord.bitValueOr(9, true)));
+    this.ir3Fault.set(!flightPhase112 && (ir3Pitch.isFailureWarning() || ir3MaintenanceWord.bitValueOr(9, true)));
 
     this.adr1Faulty.set(!(!this.acESSBusPowered.get() || flightPhase112) && adr1Fault);
     this.adr2Faulty.set(!(!this.ac4BusPowered.get() || flightPhase112) && adr2Fault);
@@ -3553,6 +3556,15 @@ export class FwsCore {
         !this.ir3NotAlignedPulse.read() &&
         flightPhase !== 1,
     );
+
+    this.ir1InAttAlign = ir1Pitch.isNoComputedData() && ir1MaintenanceWord.bitValueOr(1, false);
+    this.ir2InAttAlign = ir2Pitch.isNoComputedData() && ir2MaintenanceWord.bitValueOr(1, false);
+    this.ir3InAttAlign = ir3Pitch.isNoComputedData() && ir3MaintenanceWord.bitValueOr(1, false);
+    const allIrsInAttAlign = this.ir1InAttAlign && this.ir2InAttAlign && this.ir3InAttAlign;
+    this.oneOrTwoIrsInAttAlignMemo.set(
+      (this.ir1InAttAlign || this.ir2InAttAlign || this.ir3InAttAlign) && allIrsInAttAlign,
+    );
+    this.allIrsInAttAlignMemo.set(allIrsInAttAlign);
 
     // RA acquisition
     this.radioHeight1.setFromSimVar('L:A32NX_RA_1_RADIO_ALTITUDE');

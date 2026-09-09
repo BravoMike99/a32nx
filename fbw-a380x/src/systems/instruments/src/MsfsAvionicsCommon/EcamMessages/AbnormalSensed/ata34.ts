@@ -584,6 +584,11 @@ export const EcamAbnormalSensedAta34: { [n: number]: AbnormalProcedure } = {
     sensed: true,
     items: [
       {
+        name: 'EXCESS MOTION',
+        sensed: true,
+        style: ChecklistLineStyle.Amber,
+      },
+      {
         name: 'IR 1 IN ALIGN',
         sensed: true,
         style: ChecklistLineStyle.Green,

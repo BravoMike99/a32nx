@@ -435,7 +435,7 @@ export class FwsMemos {
     },
     '340003001': {
       // IR IN ALIGN
-      flightPhaseInhib: [],
+      flightPhaseInhib: [3, 4, 5, 6, 7, 8, 9, 10, 11],
       simVarIsActive: this.fws.irInAlignMemo,
       whichCodeToReturn: () => [
         FwsCore.irInAlignMessage(this.fws.irTimeToAlign, this.fws.oneEngineRunning.get(), this.fws.irInAlignProblem),
@@ -462,6 +462,29 @@ export class FwsMemos {
         '340003019',
         '340003020',
       ],
+      memoInhibit: () => false,
+    },
+    '340003022': {
+      // IR IN ATT ALIGN
+      flightPhaseInhib: [],
+      simVarIsActive: this.fws.oneOrTwoIrsInAttAlignMemo,
+      whichCodeToReturn: () => [
+        this.fws.ir1InAttAlign && !this.fws.ir2InAttAlign && !this.fws.ir3InAttAlign,
+        this.fws.ir2InAttAlign && this.fws.ir3InAttAlign && !this.fws.ir1InAttAlign,
+        this.fws.ir3InAttAlign && !this.fws.ir2InAttAlign && !this.fws.ir1InAttAlign,
+        this.fws.ir1InAttAlign && this.fws.ir2InAttAlign && !this.fws.ir3InAttAlign,
+        this.fws.ir1InAttAlign && this.fws.ir3InAttAlign && !this.fws.ir2InAttAlign,
+        this.fws.ir2InAttAlign && this.fws.ir3InAttAlign && !this.fws.ir1InAttAlign,
+      ],
+      codesToReturn: ['340003022', '340003023', '340003024', '340003025', '340003026', '340003027'],
+      memoInhibit: () => false,
+    },
+    '340003028': {
+      // IR IN ATT ALIGN
+      flightPhaseInhib: [],
+      simVarIsActive: this.fws.allIrsInAttAlignMemo,
+      whichCodeToReturn: () => [0],
+      codesToReturn: ['340003028'],
       memoInhibit: () => false,
     },
     '340068001': {
