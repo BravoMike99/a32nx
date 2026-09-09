@@ -1,15 +1,26 @@
-import { ClockEvents, FSComponent, MappedSubject, Subject, VNode } from '@microsoft/msfs-sdk';
+// Copyright (c) 2024-2026 FlyByWire Simulations
+// SPDX-License-Identifier: GPL-3.0
+import {
+  ClockEvents,
+  ConsumerSubject,
+  FSComponent,
+  LifecycleComponent,
+  MappedSubject,
+  Subject,
+  VNode,
+} from '@microsoft/msfs-sdk';
 
 import './MfdFmsPositionIrs.scss';
 import { AbstractMfdPageProps } from '../../../MFD';
 import { Footer } from '../../common/Footer';
 
 import { Button } from '../../../../MsfsAvionicsCommon/UiWidgets/Button';
-import { FmsPage } from '../../common/FmsPage';
-import { MfdSimvars } from '../../../shared/MFDSimvarPublisher';
 import { InputField } from '../../../../MsfsAvionicsCommon/UiWidgets/InputField';
 import { HeadingFormat } from '../../common/DataEntryFormats';
-import { Arinc429Register, Arinc429RegisterSubject, Arinc429Word, coordinateToString } from '@flybywiresim/fbw-sdk';
+import { coordinateToString } from '@flybywiresim/fbw-sdk';
+import { noPositionAvailableText, showReturnButtonUriExtra } from '../../../shared/utils';
+import { IrsStatus, PositionIrsEvents, PositionPageIrEvents } from '../../../FMC/PositionIrsPageEvents';
+import { Coordinates } from '@fmgc/flightplanning/data/geo';
 
 interface MfdFmsPositionIrsProps extends AbstractMfdPageProps {}
 
@@ -20,14 +31,40 @@ enum IrsDataFor {
   IRS_3 = 3,
 }
 
-type IrsStatus = 'NAV' | 'ALIGN' | 'ATT' | 'INVALID' | 'OFF' | '';
+export class MfdFmsPositionIrs extends LifecycleComponent<MfdFmsPositionIrsProps> {
+  private readonly returnButtonVisible = this.props.mfd.uiService.activeUri.get().extra === showReturnButtonUriExtra;
+  private static readonly fourDigitsValueNotAvailble = '---.-';
+  private static readonly ThreeDigitsValueNotAvailble = '---';
 
-export class MfdFmsPositionIrs extends FmsPage<MfdFmsPositionIrsProps> {
-  private readonly ir1MaintWord = Arinc429RegisterSubject.createEmpty();
+  private readonly sub = this.props.bus.getSubscriber<PositionIrsEvents>();
 
-  private readonly ir2MaintWord = Arinc429RegisterSubject.createEmpty();
+  private readonly adirsAlignmentPosition = ConsumerSubject.create(this.sub.on('adirs_alignment_position'), null);
+  private readonly adirsAligmentMode = ConsumerSubject.create(this.sub.on('adirs_alignment_mode'), null);
+  private readonly ir1Status = ConsumerSubject.create(this.sub.on('ir1_status'), IrsStatus.INVALID);
+  private readonly ir2Status = ConsumerSubject.create(this.sub.on('ir1_status'), IrsStatus.INVALID);
+  private readonly ir3Status = ConsumerSubject.create(this.sub.on('ir1_status'), IrsStatus.INVALID);
+  private readonly ir1TimeToAlign = ConsumerSubject.create(this.sub.on('ir1_time_to_align'), null);
+  private readonly ir2TimeToAlign = ConsumerSubject.create(this.sub.on('ir2_time_to_align'), null);
+  private readonly ir3TimeToAlign = ConsumerSubject.create(this.sub.on('ir3_time_to_align'), null);
+  private readonly ir1StatusMessage = ConsumerSubject.create(this.sub.on('ir1_status_message'), null);
+  private readonly ir2StatusMessage = ConsumerSubject.create(this.sub.on('ir2_status_message'), null);
+  private readonly ir3StatusMessage = ConsumerSubject.create(this.sub.on('ir3_status_message'), null);
 
-  private readonly ir3MaintWord = Arinc429RegisterSubject.createEmpty();
+  private readonly irCoordinates: ConsumerSubject<Coordinates | null> = ConsumerSubject.create(null, null);
+  private readonly irStatus: ConsumerSubject<IrsStatus> = ConsumerSubject.create(null, 'INVALID');
+  private readonly irTimeToALign: ConsumerSubject<number | null> = ConsumerSubject.create(null, null);
+  private readonly irTrueTrack: ConsumerSubject<number | null> = ConsumerSubject.create(null, null);
+  private readonly irGroundSpeed: ConsumerSubject<number | null> = ConsumerSubject.create(null, null);
+  private readonly irTrueWindDirection: ConsumerSubject<number | null> = ConsumerSubject.create(null, null);
+  private readonly irTrueWindSpeed: ConsumerSubject<number | null> = ConsumerSubject.create(null, null);
+  private readonly irTrueHeading: ConsumerSubject<number | null> = ConsumerSubject.create(null, null);
+  private readonly irMagneticHeading: ConsumerSubject<number | null> = ConsumerSubject.create(null, null);
+  private readonly irMagneticVariation: ConsumerSubject<number | null> = ConsumerSubject.create(null, null);
+  private readonly irAlignmentPosition: ConsumerSubject<Coordinates | null> = ConsumerSubject.create(null, null);
+  private readonly irAlignmentMode: ConsumerSubject<string | null> = ConsumerSubject.create(null, null);
+  private readonly gpirsCoordinates: ConsumerSubject<Coordinates | null> = ConsumerSubject.create(null, null);
+  private readonly gpirsPositionAccuracy: ConsumerSubject<number | null> = ConsumerSubject.create(null, null);
+  private readonly gpirsAccuracyIsMeters: ConsumerSubject<boolean | null> = ConsumerSubject.create(null, false);
 
   private readonly alignmentLabel = Subject.create<string>('----');
 
@@ -35,23 +72,17 @@ export class MfdFmsPositionIrs extends FmsPage<MfdFmsPositionIrsProps> {
 
   private readonly alignOnOtherRefDisabled = Subject.create<boolean>(true);
 
-  private readonly irs1Status = Subject.create<IrsStatus>('');
+  private readonly irs1SecondColumn = this.ir1TimeToAlign
+    .map((v) => (v !== null ? MfdFmsPositionIrs.alignDurationLeft(v) : ''))
+    .withLifecycle(this.defaultLifecycle);
 
-  private readonly irs1SecondColumn = Subject.create<string>('');
+  private readonly irs2SecondColumn = this.ir2TimeToAlign
+    .map((v) => (v !== null ? MfdFmsPositionIrs.alignDurationLeft(v) : ''))
+    .withLifecycle(this.defaultLifecycle);
 
-  private readonly irs1ThirdColumn = Subject.create<string>('');
-
-  private readonly irs2Status = Subject.create<IrsStatus>('');
-
-  private readonly irs2SecondColumn = Subject.create<string>('');
-
-  private readonly irs2ThirdColumn = Subject.create<string>('');
-
-  private readonly irs3Status = Subject.create<IrsStatus>('');
-
-  private readonly irs3SecondColumn = Subject.create<string>('');
-
-  private readonly irs3ThirdColumn = Subject.create<string>('');
+  private readonly irs3SecondColumn = this.ir3TimeToAlign
+    .map((v) => (v !== null ? MfdFmsPositionIrs.alignDurationLeft(v) : ''))
+    .withLifecycle(this.defaultLifecycle);
 
   private readonly setHdgDivRef = FSComponent.createRef<HTMLDivElement>();
 
@@ -69,108 +100,138 @@ export class MfdFmsPositionIrs extends FmsPage<MfdFmsPositionIrsProps> {
 
   private readonly irsDataFreezeButtonDisabled = Subject.create(true);
 
-  private readonly irsDataPosition = Subject.create<string>('');
+  private readonly irsDataPosition = this.irCoordinates
+    .map((v) => (v !== null ? coordinateToString(v, false) : noPositionAvailableText))
+    .withLifecycle(this.defaultLifecycle);
 
-  private readonly irsDataTrueTrack = Subject.create<string>('');
+  private readonly irsDataTrueTrack = this.irTrueTrack
+    .map((v) => (v != null ? v.toFixed(1) : MfdFmsPositionIrs.fourDigitsValueNotAvailble))
+    .withLifecycle(this.defaultLifecycle);
 
-  private readonly irsDataGroundSpeed = Subject.create<string>('');
+  private readonly irsDataTrueTrackUnitVisiblity = this.irTrueTrack
+    .map((v) => (v !== null ? 'visible' : 'hidden'))
+    .withLifecycle(this.defaultLifecycle);
 
-  private readonly irsDataTrueWindDirection = Subject.create<string>('');
+  private readonly irsDataGroundSpeed = this.irGroundSpeed
+    .map((v) => (v !== null ? v.toFixed(0) : MfdFmsPositionIrs.ThreeDigitsValueNotAvailble))
+    .withLifecycle(this.defaultLifecycle);
 
-  private readonly irsDataTrueWindSpeed = Subject.create<string>('');
+  private readonly irsDataGroundSpeedUnitVisiblity = this.irsDataGroundSpeed
+    .map((v) => (v !== null ? 'visible' : 'hidden'))
+    .withLifecycle(this.defaultLifecycle);
 
-  private readonly irsDataTrueHeading = Subject.create<string>('');
+  private readonly irsDataTrueWindDirection = this.irTrueWindDirection
+    .map((v) => (v !== null ? v.toFixed(0) : MfdFmsPositionIrs.ThreeDigitsValueNotAvailble))
+    .withLifecycle(this.defaultLifecycle);
 
-  private readonly irsDataMagneticHeading = Subject.create<string>('');
+  private readonly irsDataWindDirectionUnitVisiblity = this.irTrueWindDirection
+    .map((v) => (v !== null ? 'visible' : 'hidden'))
+    .withLifecycle(this.defaultLifecycle);
 
-  private readonly irsDataMagneticVariation = Subject.create<string>('');
+  private readonly irsDataTrueWindSpeed = this.irTrueWindSpeed
+    .map((v) => '/' + (v !== null ? +v.toFixed(0).padStart(3, '0') : MfdFmsPositionIrs.ThreeDigitsValueNotAvailble))
+    .withLifecycle(this.defaultLifecycle);
 
-  private readonly irsDataMagneticVariationUnit = Subject.create<string>('');
+  private readonly irsDataWindSpeedUnitVisiblity = this.irTrueWindSpeed
+    .map((v) => (v !== null ? 'visible' : 'hidden'))
+    .withLifecycle(this.defaultLifecycle);
 
-  private readonly irsDataGpirsPosition = Subject.create<string>('');
+  private readonly irsDataTrueHeading = this.irTrueHeading
+    .map((v) => (v !== null ? v.toFixed(1) : MfdFmsPositionIrs.fourDigitsValueNotAvailble))
+    .withLifecycle(this.defaultLifecycle);
 
-  private readonly irsDataAccuracy = Subject.create<string>('');
+  private readonly irsDataTrueHeadingUnitvisiblity = this.irsDataTrueHeading
+    .map((v) => (v !== null ? 'visible' : 'hidden'))
+    .withLifecycle(this.defaultLifecycle);
+
+  private readonly irsDataMagneticHeading = this.irMagneticHeading
+    .map((v) => (v !== null ? v.toFixed(1) : MfdFmsPositionIrs.fourDigitsValueNotAvailble))
+    .withLifecycle(this.defaultLifecycle);
+
+  private readonly irsDataMagneticHeadingUnitvisiblity = this.irMagneticHeading
+    .map((v) => (v !== null ? v.toFixed(1) : MfdFmsPositionIrs.fourDigitsValueNotAvailble))
+    .withLifecycle(this.defaultLifecycle);
+
+  private readonly irsDataMagneticVariation = this.irMagneticVariation
+    .map((v) => (v !== null ? v.toFixed(1) : '-.-'))
+    .withLifecycle(this.defaultLifecycle);
+
+  private readonly irsDataMagneticVariationUnit = this.irMagneticVariation
+    .map((v) => (v !== null ? `${v > 0 ? '°W' : '°E'}` : '\xa0\xa0'))
+    .withLifecycle(this.defaultLifecycle);
+
+  private readonly irsDataGpirsPosition = this.gpirsCoordinates
+    .map((v) => (v !== null ? coordinateToString(v, false) : noPositionAvailableText))
+    .withLifecycle(this.defaultLifecycle);
+
+  private readonly gpirsDataAccuracy = this.gpirsPositionAccuracy
+    .map((v) => (v !== null ? v : '---'))
+    .withLifecycle(this.defaultLifecycle);
+  private readonly gpirsUnit = this.gpirsAccuracyIsMeters
+    .map((v) => (v !== null ? (v ? 'M\xa0' : 'FT') : '\xa0\xa0'))
+    .withLifecycle(this.defaultLifecycle);
 
   private readonly irsAreAligned = MappedSubject.create(
-    ([ir1, ir2, ir3]) => ['NAV', 'ATT'].includes(ir1) && ['NAV', 'ATT'].includes(ir2) && ['NAV', 'ATT'].includes(ir3),
-    this.irs1Status,
-    this.irs2Status,
-    this.irs3Status,
-  );
+    ([ir1, ir2, ir3]) => ir1 === 'NAV' && ir2 === 'NAV' && ir3 === 'NAV',
+    this.ir1Status,
+    this.ir2Status,
+    this.ir3Status,
+  ).withLifecycle(this.defaultLifecycle);
 
-  private readonly irsAreAlignedOnRefPos = Subject.create<boolean>(false);
+  private readonly irsAreAligning = MappedSubject.create(
+    ([ir1, ir2, ir3]) => ir1 === 'ALIGN' || ir2 === 'ALIGN' || ir3 === 'ALIGN',
+    this.ir1Status,
+    this.ir2Status,
+    this.ir3Status,
+  ).withLifecycle(this.defaultLifecycle);
 
-  protected onNewData() {}
+  private static alignDurationLeft(ttn: number): string {
+    if (ttn !== null) {
+      return `AVAIL IN ${ttn >= 7 ? '\u003e' : ''}${ttn} MIN`;
+    }
+    return '';
+  }
 
   private changeIrsData(showDataFor: IrsDataFor) {
+    if (showDataFor !== IrsDataFor.NONE) {
+      this.irCoordinates.setConsumer(this.sub.on(`coordinates_${showDataFor}`));
+      this.irStatus.setConsumer(this.sub.on(`status_${showDataFor}`));
+      this.irTimeToALign.setConsumer(this.sub.on(`time_to_align_${showDataFor}`));
+      this.irGroundSpeed.setConsumer(this.sub.on(`ground_speed_${showDataFor}`));
+      this.irTrueWindDirection.setConsumer(this.sub.on(`true_wind_direction_${showDataFor}`));
+      this.irTrueWindSpeed.setConsumer(this.sub.on(`true_wind_speed_${showDataFor}`));
+      this.irTrueHeading.setConsumer(this.sub.on(`magnetic_variation_${showDataFor}`));
+      this.irAlignmentPosition.setConsumer(this.sub.on(`alignment_position_${showDataFor}`));
+      this.irAlignmentMode.setConsumer(this.sub.on(`alignment_mode_${showDataFor}`));
+      this.gpirsCoordinates.setConsumer(this.sub.on(`gpirs_coordinates_${showDataFor}`));
+      this.gpirsPositionAccuracy.setConsumer(this.sub.on(`gpirs_position_accuracy_${showDataFor}`));
+    }
+
     this.irs1DataVisible.set(showDataFor === IrsDataFor.IRS_1);
     this.irs2DataVisible.set(showDataFor === IrsDataFor.IRS_2);
     this.irs3DataVisible.set(showDataFor === IrsDataFor.IRS_3);
     this.irsDataRef.instance.style.visibility = showDataFor === IrsDataFor.NONE ? 'hidden' : 'visible';
-    this.updateIrsData();
   }
 
   public onAfterRender(node: VNode): void {
     super.onAfterRender(node);
 
-    const sub = this.props.bus.getSubscriber<ClockEvents & MfdSimvars>();
-
-    this.subs.push(sub.on('adirs1MaintWord').handle((w) => this.ir1MaintWord.setWord(w)));
-    this.subs.push(sub.on('adirs2MaintWord').handle((w) => this.ir2MaintWord.setWord(w)));
-    this.subs.push(sub.on('adirs3MaintWord').handle((w) => this.ir3MaintWord.setWord(w)));
-
+    const sub = this.props.bus.getSubscriber<ClockEvents & PositionPageIrEvents>();
     this.subs.push(this.showIrsDataFor.sub((v) => this.changeIrsData(v), true));
 
     this.subs.push(
-      this.irsAreAligned.sub((v) => {
-        if (v) {
-          if (this.irsAreAlignedOnRefPos.get()) {
-            this.alignmentLabel.set('IRS ALIGNED ON REF POS:');
-          } else {
-            this.alignmentLabel.set('IRS ALIGNED ON GPS POS:');
-          }
-          this.alignmentPosition.set(
-            coordinateToString(this.props.fmcService.master.navigation.getPpos() ?? { lat: 0, long: 0 }, false),
+      MappedSubject.create(
+        ([irInAlign, irAligned, pos, mode]) => {
+          this.alignmentLabel.set(
+            mode !== null && (irInAlign || irAligned) ? `IRS ${irInAlign ? 'ALIGNING' : 'ALIGNED'} ON ${mode} POS` : '',
           );
-        } else {
-          if (this.irsAreAlignedOnRefPos.get()) {
-            this.alignmentLabel.set('IRS ALIGNING ON REF POS:');
-          } else {
-            this.alignmentLabel.set('IRS ALIGNING ON GPS POS:');
-          }
-          this.alignmentPosition.set(
-            coordinateToString(this.props.fmcService.master.navigation.getPpos() ?? { lat: 0, long: 0 }, false),
-          );
-        }
-      }, true),
-    );
-
-    this.subs.push(
-      this.ir1MaintWord.sub(
-        (v) => this.setIrsStatusColumns(1, v, this.irs1Status, this.irs1SecondColumn, this.irs1ThirdColumn),
-        true,
+          this.alignmentPosition.set(pos !== null ? coordinateToString(pos, false) : '');
+        },
+        this.irsAreAligning,
+        this.irsAreAligned,
+        this.adirsAlignmentPosition,
+        this.adirsAligmentMode,
       ),
-    );
-    this.subs.push(
-      this.ir2MaintWord.sub(
-        (v) => this.setIrsStatusColumns(2, v, this.irs2Status, this.irs2SecondColumn, this.irs2ThirdColumn),
-        true,
-      ),
-    );
-    this.subs.push(
-      this.ir3MaintWord.sub(
-        (v) => this.setIrsStatusColumns(3, v, this.irs3Status, this.irs3SecondColumn, this.irs3ThirdColumn),
-        true,
-      ),
-    );
-
-    this.subs.push(
-      sub
-        .on('realTime')
-        .atFrequency(1)
-        .handle((_t) => {
-          this.updateIrsData();
-        }),
     );
 
     this.subs.push(this.irsAreAligned);
@@ -178,115 +239,14 @@ export class MfdFmsPositionIrs extends FmsPage<MfdFmsPositionIrsProps> {
     this.setHdgDivRef.instance.style.visibility = 'hidden';
   }
 
-  private updateIrsData() {
-    const ir = this.showIrsDataFor.get();
-
-    if (ir !== IrsDataFor.NONE) {
-      const lat = Arinc429Word.fromSimVarValue(`L:A32NX_ADIRS_IR_${ir}_LATITUDE`);
-      const long = Arinc429Word.fromSimVarValue(`L:A32NX_ADIRS_IR_${ir}_LONGITUDE`);
-
-      this.irsDataPosition.set(coordinateToString({ lat: lat.value, long: long.value }, false));
-      this.irsDataTrueTrack.set(Arinc429Word.fromSimVarValue(`L:A32NX_ADIRS_IR_${ir}_TRUE_TRACK`).value.toFixed(1));
-      this.irsDataGroundSpeed.set(Arinc429Word.fromSimVarValue(`L:A32NX_ADIRS_IR_${ir}_GROUND_SPEED`).value.toFixed(1));
-      this.irsDataTrueWindDirection.set(
-        Arinc429Word.fromSimVarValue(`L:A32NX_ADIRS_IR_${ir}_WIND_DIRECTION`).value.toFixed(1),
-      );
-      this.irsDataTrueWindSpeed.set(
-        `/${Arinc429Word.fromSimVarValue(`L:A32NX_ADIRS_IR_${ir}_WIND_SPEED`).value.toFixed(1)}`,
-      );
-      this.irsDataTrueHeading.set(Arinc429Word.fromSimVarValue(`L:A32NX_ADIRS_IR_${ir}_TRUE_HEADING`).value.toFixed(1));
-      this.irsDataMagneticHeading.set(Arinc429Word.fromSimVarValue(`L:A32NX_ADIRS_IR_${ir}_HEADING`).value.toFixed(1));
-
-      const magVar =
-        Arinc429Word.fromSimVarValue(`L:A32NX_ADIRS_IR_${ir}_HEADING`).value -
-        Arinc429Word.fromSimVarValue(`L:A32NX_ADIRS_IR_${ir}_TRUE_HEADING`).value;
-      this.irsDataMagneticVariation.set(Math.abs(magVar).toFixed(1));
-      this.irsDataMagneticVariationUnit.set(magVar < 0 ? '°W' : '°E');
-      this.irsDataGpirsPosition.set(
-        coordinateToString(this.props.fmcService.master.navigation.getPpos() ?? { lat: 0, long: 0 }, false),
-      );
-      this.irsDataAccuracy.set(this.props.fmcService.master.navigation.getEpe().toFixed(0) ?? '');
-    }
-  }
-
-  private alignDurationLeft(v: Arinc429Register): string {
-    if (v.bitValue(16) && v.bitValue(17) && v.bitValue(18)) {
-      return 'AVAIL IN \u003e 7 MIN';
-    }
-    if (v.bitValue(17) && v.bitValue(18)) {
-      return 'AVAIL IN 6 MIN';
-    }
-    if (v.bitValue(16) && v.bitValue(18)) {
-      return 'AVAIL IN 5 MIN';
-    }
-    if (v.bitValue(18)) {
-      return 'AVAIL IN 4 MIN';
-    }
-    if (v.bitValue(16) && v.bitValue(17)) {
-      return 'AVAIL IN 3 MIN';
-    }
-    if (v.bitValue(17)) {
-      return 'AVAIL IN 2 MIN';
-    }
-    if (v.bitValue(16)) {
-      return 'AVAIL IN 1 MIN';
-    }
-    return '';
-  }
-
-  private setIrsStatusColumns(
-    ir: number,
-    v: Arinc429Register,
-    first: Subject<IrsStatus>,
-    second: Subject<string>,
-    third: Subject<string>,
-  ) {
-    const knob: number = SimVar.GetSimVarValue(`L:A32NX_OVHD_ADIRS_IR_${ir}_MODE_SELECTOR_KNOB`, 'Enum');
-
-    if (knob === 1 || knob === 2) {
-      if (v.bitValue(1)) {
-        first.set('ALIGN');
-        second.set(this.alignDurationLeft(v));
-      } else if (v.bitValue(2)) {
-        first.set('ATT');
-      } else if (v.bitValue(3)) {
-        first.set('NAV');
-      } else {
-        first.set('INVALID');
-      }
-
-      // Third column
-      if (v.bitValue(4)) {
-        third.set('ENTER HDG');
-      }
-
-      if (v.bitValue(9) || v.bitValue(14)) {
-        third.set('IR FAULT');
-      } else if (v.bitValue(4)) {
-        third.set('ENTER HDG');
-      } else if (v.bitValue(13)) {
-        third.set('EXCESS MOTION');
-      } else if (v.bitValue(8)) {
-        third.set('SWITCH ADR');
-      } else {
-        third.set('');
-      }
-    } else {
-      first.set('OFF');
-    }
-  }
-
   render(): VNode {
     return (
       <>
-        {super.render()}
         {/* begin page content */}
         <div class="mfd-page-container">
           <div class="fr" style="margin: 15px;">
             <div style="flex: 1; display: flex; justify-content: center; align-items: center;">
-              <span class="mfd-label" style="color: #e68000">
-                {this.alignmentLabel}
-              </span>
+              <span class="mfd-value bigger">{this.alignmentLabel}</span>
             </div>
             <div style="flex: 1 display: flex; justify-content: center; align-items: center;">
               <span class="mfd-value bigger">{this.alignmentPosition}</span>
@@ -300,13 +260,13 @@ export class MfdFmsPositionIrs extends FmsPage<MfdFmsPositionIrsProps> {
               <span class="mfd-label">IRS 1</span>
             </div>
             <div class="mfd-position-irs-table-col2">
-              <span class="mfd-value bigger">{this.irs1Status}</span>
+              <span class="mfd-value bigger">{this.ir1Status}</span>
             </div>
             <div class="mfd-position-irs-table-col3">
               <span class="mfd-value">{this.irs1SecondColumn}</span>
             </div>
             <div class="mfd-position-irs-table-col4">
-              <span class="mfd-value">{this.irs1ThirdColumn}</span>
+              <span class="mfd-value">{this.ir1StatusMessage}</span>
             </div>
           </div>
           <div class="fr">
@@ -314,13 +274,13 @@ export class MfdFmsPositionIrs extends FmsPage<MfdFmsPositionIrsProps> {
               <span class="mfd-label">IRS 2</span>
             </div>
             <div class="mfd-position-irs-table-col2">
-              <span class="mfd-value bigger">{this.irs2Status}</span>
+              <span class="mfd-value bigger">{this.ir2Status}</span>
             </div>
             <div class="mfd-position-irs-table-col3">
               <span class="mfd-value">{this.irs2SecondColumn}</span>
             </div>
             <div class="mfd-position-irs-table-col4">
-              <span class="mfd-value">{this.irs2ThirdColumn}</span>
+              <span class="mfd-value">{this.ir2StatusMessage}</span>
             </div>
           </div>
           <div class="fr">
@@ -328,13 +288,13 @@ export class MfdFmsPositionIrs extends FmsPage<MfdFmsPositionIrsProps> {
               <span class="mfd-label">IRS 3</span>
             </div>
             <div class="mfd-position-irs-table-col2 mfd-position-irs-table-last-row">
-              <span class="mfd-value bigger">{this.irs3Status}</span>
+              <span class="mfd-value bigger">{this.ir3Status}</span>
             </div>
             <div class="mfd-position-irs-table-col3 mfd-position-irs-table-last-row">
               <span class="mfd-value">{this.irs3SecondColumn}</span>
             </div>
             <div class="mfd-position-irs-table-col4 mfd-position-irs-table-last-row">
-              <span class="mfd-value">{this.irs3ThirdColumn}</span>
+              <span class="mfd-value">{this.ir3StatusMessage}</span>
             </div>
           </div>
           <div
@@ -392,14 +352,24 @@ export class MfdFmsPositionIrs extends FmsPage<MfdFmsPositionIrsProps> {
               </div>
               <div class="mfd-label-value-container" style="flex: 1.5; justify-content: flex-end; align-items: center;">
                 <span class="mfd-value bigger">{this.irsDataTrueTrack}</span>
-                <span class="mfd-label-unit mfd-unit-trailing">°T</span>
+                <span
+                  class="mfd-label-unit mfd-unit-trailing"
+                  style={{ visibility: this.irsDataTrueTrackUnitVisiblity }}
+                >
+                  °T
+                </span>
               </div>
               <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center; padding: 7px;">
                 <span class="mfd-label">T.HDG</span>
               </div>
               <div class="mfd-label-value-container" style="flex: 1; justify-content: flex-end;">
                 <span class="mfd-value bigger">{this.irsDataTrueHeading}</span>
-                <span class="mfd-label-unit mfd-unit-trailing">°T</span>
+                <span
+                  class="mfd-label-unit mfd-unit-trailing"
+                  style={{ visibility: this.irsDataTrueHeadingUnitvisiblity }}
+                >
+                  °T
+                </span>
               </div>
             </div>
             <div class="fr">
@@ -408,14 +378,24 @@ export class MfdFmsPositionIrs extends FmsPage<MfdFmsPositionIrsProps> {
               </div>
               <div class="mfd-label-value-container" style="flex: 1.5; justify-content: flex-end;">
                 <span class="mfd-value bigger">{this.irsDataGroundSpeed}</span>
-                <span class="mfd-label-unit mfd-unit-trailing">KT</span>
+                <span
+                  class="mfd-label-unit mfd-unit-trailing"
+                  style={{ visibility: this.irsDataGroundSpeedUnitVisiblity }}
+                >
+                  KT
+                </span>
               </div>
               <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center; padding: 7px;">
                 <span class="mfd-label">MAG HDG</span>
               </div>
               <div class="mfd-label-value-container" style="flex: 1; justify-content: flex-end;">
                 <span class="mfd-value bigger">{this.irsDataMagneticHeading}</span>
-                <span class="mfd-label-unit mfd-unit-trailing">°{'\xa0'}</span>
+                <span
+                  class="mfd-label-unit mfd-unit-trailing"
+                  style={{ visibility: this.irsDataMagneticHeadingUnitvisiblity }}
+                >
+                  °{'\xa0'}
+                </span>
               </div>
             </div>
             <div class="fr" style="border-bottom: 2px solid lightgrey; margin-bottom: 15px;">
@@ -424,9 +404,19 @@ export class MfdFmsPositionIrs extends FmsPage<MfdFmsPositionIrsProps> {
               </div>
               <div class="mfd-label-value-container" style="flex: 1.5; justify-content: flex-end;">
                 <span class="mfd-value bigger">{this.irsDataTrueWindDirection}</span>
-                <span class="mfd-label-unit mfd-unit-trailing">°</span>
+                <span
+                  class="mfd-label-unit mfd-unit-trailing"
+                  style={{ visibility: this.irsDataWindDirectionUnitVisiblity }}
+                >
+                  °
+                </span>
                 <span class="mfd-value bigger">{this.irsDataTrueWindSpeed}</span>
-                <span class="mfd-label-unit mfd-unit-trailing">KT</span>
+                <span
+                  class="mfd-label-unit mfd-unit-trailing"
+                  style={{ visibility: this.irsDataWindSpeedUnitVisiblity }}
+                >
+                  KT
+                </span>
               </div>
               <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center; padding: 7px;">
                 <span class="mfd-label">MAG VAR</span>
@@ -446,10 +436,10 @@ export class MfdFmsPositionIrs extends FmsPage<MfdFmsPositionIrsProps> {
               <div class="mfd-label-value-container">
                 <span class="mfd-label mfd-spacing-right">ACCURACY</span>
                 <span class="mfd-value bigger" style="width: 300px; text-align: right;">
-                  {this.irsDataAccuracy}
+                  {this.gpirsDataAccuracy}
                 </span>
                 <span class="mfd-label-unit" style="width: 25px;">
-                  FT
+                  {this.gpirsUnit}
                 </span>
               </div>
             </div>
@@ -461,6 +451,7 @@ export class MfdFmsPositionIrs extends FmsPage<MfdFmsPositionIrsProps> {
               label="RETURN"
               onClick={() => this.props.mfd.uiService.navigateTo('back')}
               buttonStyle="margin-right: 5px;"
+              visible={this.returnButtonVisible}
             />
           </div>
         </div>
