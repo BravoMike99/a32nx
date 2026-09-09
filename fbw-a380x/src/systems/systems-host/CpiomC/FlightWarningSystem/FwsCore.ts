@@ -42,6 +42,7 @@ import {
   RegisteredSimVar,
   UpdateThrottler,
   IrBusEvents,
+  AdrBusEvents,
 } from '@flybywiresim/fbw-sdk';
 import { VerticalMode, LateralMode, AutoThrustModeMessage } from '@shared/autopilot';
 import { RmpState, VhfComManagerDataEvents } from '@flybywiresim/rmp';
@@ -92,6 +93,7 @@ import {
 // FIXME should not import from instruments
 import { FcdcBusEvents } from '@shared/publishers/FcdcPublisher';
 import { FwsAutoCallouts } from './FwsAutoCallouts';
+import { getRemainingAlignTime } from '@shared/AdirsUtils';
 
 export function xor(a: boolean, b: boolean): boolean {
   return !!((a ? 1 : 0) ^ (b ? 1 : 0));
@@ -147,7 +149,8 @@ export class FwsCore {
       MsfsFlightModelEvents &
       OisDebugDataControlEvents &
       StallWarningEvents &
-      IrBusEvents
+      IrBusEvents &
+      AdrBusEvents
   >();
 
   private subs: Subscription[] = [];
@@ -1597,15 +1600,8 @@ export class FwsCore {
   private onGroundImmediate = false;
 
   public readonly gearLeverPos = Subject.create(false);
-
-  private readonly ir1GroundSpeed = Arinc429LocalVarConsumerSubject.create(this.sub.on('ir_ground_speed_1'));
-  private readonly ir2GroundSpeed = Arinc429LocalVarConsumerSubject.create(this.sub.on('ir_ground_speed_2'));
-  private readonly ir3GroundSpeed = Arinc429LocalVarConsumerSubject.create(this.sub.on('ir_ground_speed_3'));
-
   private readonly autobrakeActiveVar = RegisteredSimVar.createBoolean('L:A32NX_AUTOBRAKES_ACTIVE');
-
   private readonly autobrakeDeactivatedPulseNode = new NXLogicPulseNode(true);
-
   private readonly autoBrakeOffConfirmNode = new NXLogicConfirmNode(1, true);
   private readonly autoBrakeOffMemory = new NXLogicMemoryNode(false);
   private readonly autoBrakeOffAthrDiscPressedTriggeredNode = new NXLogicTriggeredMonostableNode(0.5, true, true);
@@ -1651,30 +1647,27 @@ export class FwsCore {
   );
 
   /* NAVIGATION */
-
-  public readonly adirsRemainingAlignTime = Subject.create(0);
-
   public readonly adr1PbOn = RegisteredSimVar.createBoolean('L:A32NX_OVHD_ADIRS_ADR_1_PB_IS_ON');
   public readonly adr2PbOn = RegisteredSimVar.createBoolean('L:A32NX_OVHD_ADIRS_ADR_2_PB_IS_ON');
   public readonly adr3PbOn = RegisteredSimVar.createBoolean('L:A32NX_OVHD_ADIRS_ADR_3_PB_IS_ON');
   public readonly allAdrPbsOff = Subject.create(false);
 
-  public readonly ir1Align = Subject.create(false);
-  public readonly adiru1ModeSelector = Subject.create(0);
+  private readonly adr1DiscreteWord1 = Arinc429LocalVarConsumerSubject.create(this.sub.on('adr_discrete_word_1_1'));
+  private readonly adr2DiscreteWord2 = Arinc429LocalVarConsumerSubject.create(this.sub.on('adr_discrete_word_1_2'));
+  private readonly adr3DiscreteWord3 = Arinc429LocalVarConsumerSubject.create(this.sub.on('adr_discrete_word_1_3'));
 
-  public readonly ir2Align = Subject.create(false);
-  public readonly adiru2ModeSelector = Subject.create(0);
+  private readonly adr1Cas = Arinc429LocalVarConsumerSubject.create(this.sub.on('adr_computed_airspeed_1'));
+  private readonly adr2Cas = Arinc429LocalVarConsumerSubject.create(this.sub.on('adr_computed_airspeed_2'));
+  private readonly adr3Cas = Arinc429LocalVarConsumerSubject.create(this.sub.on('adr_computed_airspeed_3'));
+  private readonly adr3MaxCas = Arinc429LocalVarConsumerSubject.create(this.sub.on('adr_max_airspeed_3'));
 
-  public readonly ir3Align = Subject.create(false);
-  public readonly adiru3ModeSelector = Subject.create(0);
+  private readonly adr1Mach = Arinc429LocalVarConsumerSubject.create(this.sub.on('adr_mach_1'));
+  private readonly adr2Mach = Arinc429LocalVarConsumerSubject.create(this.sub.on('adr_mach_2'));
+  private readonly adr3Mach = Arinc429LocalVarConsumerSubject.create(this.sub.on('adr_mach_3'));
 
-  public readonly adr1Cas = Arinc429RegisterSubject.createEmpty();
-  public readonly adr2Cas = Arinc429RegisterSubject.createEmpty();
-  public readonly adr3Cas = Arinc429RegisterSubject.createEmpty();
-
-  public readonly adr1Mach = Arinc429RegisterSubject.createEmpty();
-  public readonly adr2Mach = Arinc429RegisterSubject.createEmpty();
-  public readonly adr3Mach = Arinc429RegisterSubject.createEmpty();
+  private readonly adr1Altitude = Arinc429LocalVarConsumerSubject.create(this.sub.on('adr_altitude_1'));
+  private readonly adr2Altitude = Arinc429LocalVarConsumerSubject.create(this.sub.on('adr_altitude_2'));
+  private readonly adr3Altitude = Arinc429LocalVarConsumerSubject.create(this.sub.on('adr_altitude_3'));
 
   public readonly adr1Faulty = Subject.create(false);
   public readonly adr2Faulty = Subject.create(false);
@@ -1702,17 +1695,51 @@ export class FwsCore {
 
   public readonly adrPressureAltitude = Subject.create<number | null>(0);
 
-  public readonly ir1MaintWord = Arinc429Register.empty();
-  public readonly ir2MaintWord = Arinc429Register.empty();
-  public readonly ir3MaintWord = Arinc429Register.empty();
+  public readonly ir1MaintWord = Arinc429LocalVarConsumerSubject.create(this.sub.on('ir_maint_word_1'));
+  public readonly ir2MaintWord = Arinc429LocalVarConsumerSubject.create(this.sub.on('ir_maint_word_2'));
+  public readonly ir3MaintWord = Arinc429LocalVarConsumerSubject.create(this.sub.on('ir_maint_word_3'));
 
-  public readonly ir1Pitch = Arinc429Register.empty();
-  public readonly ir2Pitch = Arinc429Register.empty();
-  public readonly ir3Pitch = Arinc429Register.empty();
+  public readonly ir1Pitch = Arinc429LocalVarConsumerSubject.create(this.sub.on('ir_pitch_1'));
+  public readonly ir2Pitch = Arinc429LocalVarConsumerSubject.create(this.sub.on('ir_pitch_2'));
+  public readonly ir3Pitch = Arinc429LocalVarConsumerSubject.create(this.sub.on('ir_pitch_3'));
 
   public readonly ir1Fault = Subject.create(false);
   public readonly ir2Fault = Subject.create(false);
   public readonly ir3Fault = Subject.create(false);
+
+  private readonly ir1GroundSpeed = Arinc429LocalVarConsumerSubject.create(this.sub.on('ir_ground_speed_1'));
+  private readonly ir2GroundSpeed = Arinc429LocalVarConsumerSubject.create(this.sub.on('ir_ground_speed_2'));
+  private readonly ir3GroundSpeed = Arinc429LocalVarConsumerSubject.create(this.sub.on('ir_ground_speed_3'));
+
+  public readonly ir1Align = Subject.create(false);
+  public readonly ir2Align = Subject.create(false);
+  public readonly ir3Align = Subject.create(false);
+
+  public readonly irInAlignMemo = MappedSubject.create(
+    ([flightPhase, ir1, ir2, ir3]) => {
+      return (flightPhase === 1 || flightPhase === 2 || flightPhase === 12) && (ir1 || ir2 || ir3);
+    },
+    this.flightPhase,
+    this.ir1Align,
+    this.ir2Align,
+    this.ir3Align,
+  );
+
+  public ir1TimeToAlign: number | null = null;
+  public ir2TimeToAlign: number | null = null;
+  public ir3TimeToAlign: number | null = null;
+  public irTimeToAlign: number | null = null;
+
+  public readonly irNotAlignedWarning = Subject.create(false);
+  private readonly ir1NotAlignedPulse = new NXLogicPulseNode(true);
+  private readonly ir2NotAlignedPulse = new NXLogicPulseNode(true);
+  private readonly ir3NotAlignedPulse = new NXLogicPulseNode(true);
+  public irPositionDisagree = false;
+  public irPositionMissing = false;
+  public ir1ExcessMotion = false;
+  public ir2ExcessMotion = false;
+  public ir3ExcessMotion = false;
+  public irInAlignProblem = false;
 
   private ir3UsedLeft = false;
   private ir3UsedRight = false;
@@ -1723,8 +1750,6 @@ export class FwsCore {
     this.ir2Fault,
     this.ir3Fault,
   );
-
-  public readonly irExcessMotion = Subject.create(false);
 
   public readonly extremeLatitudeAlert = Subject.create(false);
 
@@ -2742,36 +2767,76 @@ export class FwsCore {
     return array;
   }
 
-  public adirsMessage1(adirs: number, engineRunning: boolean): number {
+  public static irInAlignMessage(timeToAlign: number | null, engineRunning: boolean, alignProblem: boolean): number {
     let rowChoice = 0;
-
-    switch (true) {
-      case Math.ceil(adirs / 60) >= 7 && !engineRunning:
-        rowChoice = 0;
-        break;
-      case Math.ceil(adirs / 60) >= 7 && engineRunning:
-        rowChoice = 1;
-        break;
-      case Math.ceil(adirs / 60) === 6 && !engineRunning:
-        rowChoice = 2;
-        break;
-      case Math.ceil(adirs / 60) === 6 && engineRunning:
-        rowChoice = 3;
-        break;
-      case Math.ceil(adirs / 60) === 5 && !engineRunning:
-        rowChoice = 4;
-        break;
-      case Math.ceil(adirs / 60) === 5 && engineRunning:
-        rowChoice = 5;
-        break;
-      case Math.ceil(adirs / 60) === 4 && !engineRunning:
-        rowChoice = 6;
-        break;
-      case Math.ceil(adirs / 60) === 4 && engineRunning:
-        rowChoice = 7;
-        break;
-      default:
-        break;
+    if (timeToAlign !== null) {
+      switch (true) {
+        case timeToAlign >= 7 && !engineRunning:
+          rowChoice = 0;
+          break;
+        case timeToAlign >= 7 && engineRunning:
+          rowChoice = 1;
+          break;
+        case timeToAlign >= 7 && alignProblem:
+          rowChoice = 2;
+          break;
+        case timeToAlign === 6 && !engineRunning:
+          rowChoice = 3;
+          break;
+        case timeToAlign === 6 && engineRunning:
+          rowChoice = 4;
+          break;
+        case timeToAlign === 6 && alignProblem:
+          rowChoice = 5;
+          break;
+        case timeToAlign === 5 && !engineRunning:
+          rowChoice = 6;
+          break;
+        case timeToAlign === 5 && engineRunning:
+          rowChoice = 7;
+          break;
+        case timeToAlign === 5 && alignProblem:
+          rowChoice = 8;
+          break;
+        case timeToAlign === 4 && !engineRunning:
+          rowChoice = 9;
+          break;
+        case timeToAlign === 4 && engineRunning:
+          rowChoice = 10;
+          break;
+        case timeToAlign === 4 && alignProblem:
+          rowChoice = 11;
+          break;
+        case timeToAlign === 3 && !engineRunning:
+          rowChoice = 12;
+          break;
+        case timeToAlign === 3 && engineRunning:
+          rowChoice = 13;
+          break;
+        case timeToAlign === 3 && alignProblem:
+          rowChoice = 14;
+          break;
+        case timeToAlign === 2 && !engineRunning:
+          rowChoice = 15;
+          break;
+        case timeToAlign === 2 && engineRunning:
+          rowChoice = 16;
+          break;
+        case timeToAlign === 2 && alignProblem:
+          rowChoice = 17;
+          break;
+        case timeToAlign === 1 && !engineRunning:
+          rowChoice = 18;
+          break;
+        case timeToAlign === 1 && engineRunning:
+          rowChoice = 19;
+          break;
+        case timeToAlign === 1 && alignProblem:
+          rowChoice = 20;
+          break;
+        default:
+          break;
+      }
     }
 
     return rowChoice;
@@ -2954,26 +3019,14 @@ export class FwsCore {
 
     this.flapsIndex.set(SimVar.GetSimVarValue('L:A32NX_FLAPS_CONF_INDEX', 'number'));
 
-    this.adr1Cas.setWord(SimVar.GetSimVarValue('L:A32NX_ADIRS_ADR_1_COMPUTED_AIRSPEED', 'number'));
-    this.adr2Cas.setWord(SimVar.GetSimVarValue('L:A32NX_ADIRS_ADR_2_COMPUTED_AIRSPEED', 'number'));
-    this.adr3Cas.setWord(SimVar.GetSimVarValue('L:A32NX_ADIRS_ADR_3_COMPUTED_AIRSPEED', 'number'));
-
-    this.adr1Mach.setWord(SimVar.GetSimVarValue('L:A32NX_ADIRS_ADR_1_MACH', 'number'));
-    this.adr2Mach.setWord(SimVar.GetSimVarValue('L:A32NX_ADIRS_ADR_2_MACH', 'number'));
-    this.adr3Mach.setWord(SimVar.GetSimVarValue('L:A32NX_ADIRS_ADR_3_MACH', 'number'));
-
-    this.ir1Pitch.setFromSimVar('L:A32NX_ADIRS_IR_1_PITCH');
-    this.ir2Pitch.setFromSimVar('L:A32NX_ADIRS_IR_2_PITCH');
-    this.ir3Pitch.setFromSimVar('L:A32NX_ADIRS_IR_3_PITCH');
-
-    this.ir1MaintWord.setFromSimVar('L:A32NX_ADIRS_IR_1_MAINT_WORD');
-    this.ir2MaintWord.setFromSimVar('L:A32NX_ADIRS_IR_2_MAINT_WORD');
-    this.ir3MaintWord.setFromSimVar('L:A32NX_ADIRS_IR_3_MAINT_WORD');
+    const ir1MaintenanceWord = this.ir1MaintWord.get();
+    const ir2MaintenanceWord = this.ir2MaintWord.get();
+    const ir3MaintenanceWord = this.ir3MaintWord.get();
 
     this.extremeLatitudeAlert.set(
-      (this.ir1MaintWord.bitValueOr(15, false) ||
-        this.ir2MaintWord.bitValueOr(15, false) ||
-        this.ir3MaintWord.bitValueOr(15, false)) &&
+      (ir1MaintenanceWord.bitValueOr(15, false) ||
+        ir2MaintenanceWord.bitValueOr(15, false) ||
+        ir3MaintenanceWord.bitValueOr(15, false)) &&
         !SimVar.GetSimVarValue('L:A32NX_PUSH_TRUE_REF', 'bool'),
     );
 
@@ -3419,35 +3472,29 @@ export class FwsCore {
 
     /* ADIRS acquisition */
     /* NAVIGATION */
-
-    const adr1Discrete1 = Arinc429Word.fromSimVarValue('L:A32NX_ADIRS_ADR_1_DISCRETE_WORD_1');
-    const adr2Discrete1 = Arinc429Word.fromSimVarValue('L:A32NX_ADIRS_ADR_2_DISCRETE_WORD_1');
-    const adr3Discrete1 = Arinc429Word.fromSimVarValue('L:A32NX_ADIRS_ADR_3_DISCRETE_WORD_1');
+    const adr1Discrete1 = this.adr1DiscreteWord1.get();
+    const adr2Discrete1 = this.adr2DiscreteWord2.get();
+    const adr3Discrete1 = this.adr3DiscreteWord3.get();
     const adr1Fault = adr1Discrete1.isFailureWarning() || adr1Discrete1.bitValueOr(3, false);
     const adr2Fault = adr2Discrete1.isFailureWarning() || adr2Discrete1.bitValueOr(3, false);
     const adr3Fault = adr3Discrete1.isFailureWarning() || adr3Discrete1.bitValueOr(3, false);
+    const adr1PressureAltitude = this.adr1Altitude.get();
+    const adr2PressureAltitude = this.adr2Altitude.get();
+    const adr3PressureAltitude = this.adr3Altitude.get();
 
-    this.ir1Fault.set(!flightPhase112 && (this.ir1Pitch.isFailureWarning() || this.ir1MaintWord.bitValueOr(9, true)));
-    this.ir2Fault.set(!flightPhase112 && (this.ir2Pitch.isFailureWarning() || this.ir2MaintWord.bitValueOr(9, true)));
-    this.ir3Fault.set(!flightPhase112 && (this.ir3Pitch.isFailureWarning() || this.ir3MaintWord.bitValueOr(9, true)));
-
-    const adr1PressureAltitude = Arinc429Word.fromSimVarValue('L:A32NX_ADIRS_ADR_1_ALTITUDE');
-    const adr2PressureAltitude = Arinc429Word.fromSimVarValue('L:A32NX_ADIRS_ADR_2_ALTITUDE');
-    const adr3PressureAltitude = Arinc429Word.fromSimVarValue('L:A32NX_ADIRS_ADR_3_ALTITUDE');
-
-    this.irExcessMotion.set(
-      this.ir1MaintWord.bitValueOr(13, false) ||
-        this.ir2MaintWord.bitValueOr(13, false) ||
-        this.ir3MaintWord.bitValueOr(13, false),
+    this.ir1Fault.set(
+      !flightPhase112 && (this.ir1Pitch.get().isFailureWarning() || ir1MaintenanceWord.bitValueOr(9, true)),
+    );
+    this.ir2Fault.set(
+      !flightPhase112 && (this.ir2Pitch.get().isFailureWarning() || ir2MaintenanceWord.bitValueOr(9, true)),
+    );
+    this.ir3Fault.set(
+      !flightPhase112 && (this.ir3Pitch.get().isFailureWarning() || ir3MaintenanceWord.bitValueOr(9, true)),
     );
 
     this.adr1Faulty.set(!(!this.acESSBusPowered.get() || flightPhase112) && adr1Fault);
     this.adr2Faulty.set(!(!this.ac4BusPowered.get() || flightPhase112) && adr2Fault);
     this.adr3Faulty.set(!(!this.ac2BusPowered.get() || flightPhase112) && adr3Fault);
-
-    // FIXME use the ARINC bus words
-    this.adirsRemainingAlignTime.set(SimVar.GetSimVarValue('L:A32NX_ADIRS_REMAINING_IR_ALIGNMENT_TIME', 'Seconds'));
-
     this.allAdrPbsOff.set(!this.adr1PbOn.get() && !this.adr2PbOn.get() && !this.adr3PbOn.get());
 
     // TODO use GPS alt if ADRs not available
@@ -3461,23 +3508,52 @@ export class FwsCore {
             : null,
     );
     this.ir1Align.set(
-      this.ir1MaintWord.bitValueOr(16, false) ||
-        this.ir1MaintWord.bitValueOr(17, false) ||
-        this.ir1MaintWord.bitValueOr(18, false),
+      ir1MaintenanceWord.bitValueOr(16, false) ||
+        ir1MaintenanceWord.bitValueOr(17, false) ||
+        ir1MaintenanceWord.bitValueOr(18, false),
     );
     this.ir2Align.set(
-      this.ir2MaintWord.bitValueOr(16, false) ||
-        this.ir2MaintWord.bitValueOr(17, false) ||
-        this.ir2MaintWord.bitValueOr(18, false),
+      ir2MaintenanceWord.bitValueOr(16, false) ||
+        ir2MaintenanceWord.bitValueOr(17, false) ||
+        ir2MaintenanceWord.bitValueOr(18, false),
     );
     this.ir3Align.set(
-      this.ir3MaintWord.bitValueOr(16, false) ||
-        this.ir3MaintWord.bitValueOr(17, false) ||
-        this.ir3MaintWord.bitValueOr(18, false),
+      ir3MaintenanceWord.bitValueOr(16, false) ||
+        ir3MaintenanceWord.bitValueOr(17, false) ||
+        ir3MaintenanceWord.bitValueOr(18, false),
     );
-    this.adiru1ModeSelector.set(SimVar.GetSimVarValue('L:A32NX_OVHD_ADIRS_IR_1_MODE_SELECTOR_KNOB', 'enum'));
-    this.adiru2ModeSelector.set(SimVar.GetSimVarValue('L:A32NX_OVHD_ADIRS_IR_2_MODE_SELECTOR_KNOB', 'enum'));
-    this.adiru3ModeSelector.set(SimVar.GetSimVarValue('L:A32NX_OVHD_ADIRS_IR_3_MODE_SELECTOR_KNOB', 'enum'));
+
+    this.ir1TimeToAlign = getRemainingAlignTime(ir1MaintenanceWord);
+    this.ir2TimeToAlign = getRemainingAlignTime(ir2MaintenanceWord);
+    this.ir3TimeToAlign = getRemainingAlignTime(ir3MaintenanceWord);
+    this.irTimeToAlign = Math.max(this.ir1TimeToAlign ?? 0, this.ir2TimeToAlign ?? 0, this.ir3TimeToAlign ?? 0);
+
+    this.ir1ExcessMotion = ir1MaintenanceWord.bitValueOr(12, false);
+    this.ir2ExcessMotion = ir2MaintenanceWord.bitValueOr(12, false);
+    this.ir3ExcessMotion = ir3MaintenanceWord.bitValueOr(12, false);
+
+    const ir1PositionDisagree = ir1MaintenanceWord.bitValueOr(18, false);
+    const ir2PositionDisagree = ir2MaintenanceWord.bitValueOr(18, false);
+    const ir3PositionDisagree = ir2MaintenanceWord.bitValueOr(18, false);
+    const ir1PositionMissing = ir1MaintenanceWord.bitValueOr(11, false) && this.ir1TimeToAlign === 1;
+    const ir2PositionMissing = ir1MaintenanceWord.bitValueOr(11, false) && this.ir1TimeToAlign === 1;
+    const ir3PositionMissing = ir1MaintenanceWord.bitValueOr(11, false) && this.ir1TimeToAlign === 1;
+
+    const ir1NotAligned = ir1PositionDisagree || ir1PositionMissing || this.ir1ExcessMotion;
+    const ir2NotAligned = ir2PositionDisagree || ir2PositionMissing || this.ir2ExcessMotion;
+    const ir3NotAligned = ir3PositionDisagree || ir3PositionMissing || this.ir3ExcessMotion;
+    this.ir1NotAlignedPulse.write(ir1NotAligned);
+    this.ir2NotAlignedPulse.write(ir2NotAligned);
+    this.ir3NotAlignedPulse.write(ir3NotAligned);
+    this.irInAlignProblem = ir1NotAligned || ir2NotAligned || ir3NotAligned;
+    this.irNotAlignedWarning.set(
+      this.irInAlignProblem &&
+        !this.ir1NotAlignedPulse.read() &&
+        !this.ir2NotAlignedPulse.read() &&
+        !this.ir3NotAlignedPulse.read() &&
+        flightPhase !== 1,
+    );
+
     // RA acquisition
     this.radioHeight1.setFromSimVar('L:A32NX_RA_1_RADIO_ALTITUDE');
     this.radioHeight2.setFromSimVar('L:A32NX_RA_2_RADIO_ALTITUDE');
@@ -3486,7 +3562,6 @@ export class FwsCore {
     this.height2Failed.set(this.radioHeight2.isFailureWarning());
     this.height3Failed.set(this.radioHeight3.isFailureWarning());
     // overspeed
-    const adr3MaxCas = Arinc429Word.fromSimVarValue('L:A32NX_ADIRS_ADR_3_MAX_AIRSPEED');
 
     this.trueNorthRef.set(SimVar.GetSimVarValue('L:A32NX_PUSH_TRUE_REF', 'number'));
 
@@ -3877,6 +3952,7 @@ export class FwsCore {
       this.toConfigCheckedInPhase2Or3 = true;
     }
 
+    const adr3MaxCas = this.adr3MaxCas.get();
     let overspeedWarning = this.adr3OverspeedWarning.write(
       this.adr3Cas.get().isNormalOperation() &&
         adr3MaxCas.isNormalOperation() &&
@@ -3889,7 +3965,6 @@ export class FwsCore {
       !(adr1Discrete1.isNormalOperation() || adr1Discrete1.isFunctionalTest()) ||
       !(adr2Discrete1.isNormalOperation() || adr2Discrete1.isFunctionalTest())
     ) {
-      const adr3Discrete1 = Arinc429Word.fromSimVarValue('L:A32NX_ADIRS_ADR_3_DISCRETE_WORD_1');
       overspeedWarning ||= adr3Discrete1.bitValueOr(9, false);
     }
     overspeedWarning ||= adr1Discrete1.bitValueOr(9, false) || adr2Discrete1.bitValueOr(9, false);

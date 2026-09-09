@@ -435,26 +435,10 @@ export class FwsMemos {
     },
     '340003001': {
       // IR IN ALIGN
-      flightPhaseInhib: [3, 4, 5, 6, 7, 8, 9, 10],
-      simVarIsActive: MappedSubject.create(
-        ([adirsRemainingAlignTime, ir1Align, ir2Align, ir3Align]) => {
-          const remainingTimeAbove240 = adirsRemainingAlignTime >= 240;
-          const allInAlign = ir1Align && ir2Align && ir3Align;
-          return remainingTimeAbove240 && allInAlign;
-        },
-        this.fws.adirsRemainingAlignTime,
-        this.fws.ir1Align,
-        this.fws.ir2Align,
-        this.fws.ir3Align,
-      ),
+      flightPhaseInhib: [],
+      simVarIsActive: this.fws.irInAlignMemo,
       whichCodeToReturn: () => [
-        this.fws.adirsMessage1(
-          this.fws.adirsRemainingAlignTime.get(),
-          (this.fws.engine1State.get() > 0 && this.fws.engine1State.get() < 4) ||
-            (this.fws.engine2State.get() > 0 && this.fws.engine2State.get() < 4) ||
-            (this.fws.engine3State.get() > 0 && this.fws.engine3State.get() < 4) ||
-            (this.fws.engine4State.get() > 0 && this.fws.engine4State.get() < 4),
-        ),
+        FwsCore.irInAlignMessage(this.fws.irTimeToAlign, this.fws.oneEngineRunning.get(), this.fws.irInAlignProblem),
       ],
       codesToReturn: [
         '340003001',
@@ -465,42 +449,18 @@ export class FwsMemos {
         '340003006',
         '340003007',
         '340003008',
-      ],
-      memoInhibit: () => false,
-    },
-    '340003101': {
-      // IR IN ALIGN
-      flightPhaseInhib: [3, 4, 5, 6, 7, 8, 9, 10],
-      simVarIsActive: MappedSubject.create(
-        ([adirsRemainingAlignTime, ir1Align, ir2Align, ir3Align]) => {
-          const remainingTimeAbove0 = adirsRemainingAlignTime > 0;
-          const remainingTimeBelow240 = adirsRemainingAlignTime < 240;
-          const allInAlign = ir1Align && ir2Align && ir3Align;
-          return remainingTimeAbove0 && remainingTimeBelow240 && allInAlign;
-        },
-        this.fws.adirsRemainingAlignTime,
-        this.fws.ir1Align,
-        this.fws.ir2Align,
-        this.fws.ir3Align,
-      ),
-      whichCodeToReturn: () => [
-        this.fws.adirsMessage2(
-          this.fws.adirsRemainingAlignTime.get(),
-          (this.fws.engine1State.get() > 0 && this.fws.engine1State.get() < 4) ||
-            (this.fws.engine2State.get() > 0 && this.fws.engine2State.get() < 4) ||
-            (this.fws.engine3State.get() > 0 && this.fws.engine3State.get() < 4) ||
-            (this.fws.engine4State.get() > 0 && this.fws.engine4State.get() < 4),
-        ),
-      ],
-      codesToReturn: [
-        '340003101',
-        '340003102',
-        '340003103',
-        '340003104',
-        '340003105',
-        '340003106',
-        '340003107',
-        '340003108',
+        '340003009',
+        '340003010',
+        '340003011',
+        '340003012',
+        '340003013',
+        '340003014',
+        '340003015',
+        '340003016',
+        '340003017',
+        '340003018',
+        '340003019',
+        '340003020',
       ],
       memoInhibit: () => false,
     },
