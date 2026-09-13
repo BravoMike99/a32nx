@@ -587,40 +587,41 @@ export const EcamAbnormalSensedAta34: { [n: number]: AbnormalProcedure } = {
         name: 'EXCESS MOTION',
         sensed: true,
         style: ChecklistLineStyle.Amber,
+        level: 1,
       },
       {
         name: 'IR 1 IN ALIGN',
-        sensed: true,
+        sensed: false,
         style: ChecklistLineStyle.Green,
       },
       {
         name: 'IR 2 IN ALIGN',
-        sensed: true,
+        sensed: false,
         style: ChecklistLineStyle.Green,
       },
       {
         name: 'IR 3 IN ALIGN',
-        sensed: true,
+        sensed: false,
         style: ChecklistLineStyle.Green,
       },
       {
         name: 'IR 1+2 IN ALIGN',
-        sensed: true,
+        sensed: false,
         style: ChecklistLineStyle.Green,
       },
       {
         name: 'IR 1+3 IN ALIGN',
-        sensed: true,
+        sensed: false,
         style: ChecklistLineStyle.Green,
       },
       {
         name: 'IR 2+3 IN ALIGN',
-        sensed: true,
+        sensed: false,
         style: ChecklistLineStyle.Green,
       },
       {
         name: 'IR 1+2+3 IN ALIGN',
-        sensed: true,
+        sensed: false,
         style: ChecklistLineStyle.Green,
       },
     ], // Only EXCESS MOTION for now
