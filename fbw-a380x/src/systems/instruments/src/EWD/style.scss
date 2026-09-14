@@ -625,3 +625,38 @@ text, tspan, span {
   animation-duration: 1s;
   animation-iteration-count: infinite;
 }
+
+@mixin GenericMemoFlashing($color, $name) {
+  @keyframes #{$name} {
+    0% {
+    color: $display-white !important;
+    }
+    50% {
+    color: $display-background !important;
+    background-color: $color !important;
+    }
+    100% {
+    color: $display-white !important;
+    }
+  }
+  animation-name: $name;
+  animation-timing-function: step-start;
+  animation-duration: 1s;
+  animation-iteration-count: infinite;
+}
+
+.Green.DimColor {
+    color: scale-color($display-green, $lightness: -50%) !important;
+}
+
+.Green.MemoFlashing {
+  @include GenericMemoFlashing($display-green, green-memo-flashing);
+}
+
+.Amber.MemoFlashing {
+  @include GenericMemoFlashing($display-amber, amber-memo-flashing);
+}
+
+.Amber.DimColor {
+    color: scale-color($display-amber, $lightness: -50%) !important;
+}

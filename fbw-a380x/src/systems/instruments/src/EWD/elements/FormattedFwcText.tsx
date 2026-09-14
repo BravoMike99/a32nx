@@ -33,8 +33,9 @@ export class FormattedFwcText extends DisplayComponent<FormattedFwcTextProps> {
 
       let color = 'White';
       let underlined = false;
-      // const flashing = false; TODO
+      let flashing = false;
       let framed = false;
+      let pulsing = false;
 
       let buffer = '';
       let startCol = 0;
@@ -45,7 +46,7 @@ export class FormattedFwcText extends DisplayComponent<FormattedFwcTextProps> {
           if (buffer !== '') {
             // close current part
             spans.push(
-              <tspan key={buffer} class={{ [color]: true, EWDWarn: true }}>
+              <tspan key={buffer} class={{ [color]: true, EWDWarn: true, MemoFlashing: flashing, DimColor: pulsing }}>
                 {buffer}
               </tspan>,
             );
@@ -88,7 +89,8 @@ export class FormattedFwcText extends DisplayComponent<FormattedFwcTextProps> {
                 case 'm':
                   // Reset attribute
                   underlined = false;
-                  // flashing = false;
+                  flashing = false;
+                  pulsing = false;
                   framed = false;
                   break;
                 case '4m':
@@ -96,8 +98,11 @@ export class FormattedFwcText extends DisplayComponent<FormattedFwcTextProps> {
                   underlined = true;
                   break;
                 case ')m':
-                  // Flashing attribute
-                  // flashing = true;
+                  // pulsing attribute
+                  pulsing = true;
+                  break;
+                case ')f':
+                  flashing = true;
                   break;
                 case "'m":
                   // Characters which follow must be framed

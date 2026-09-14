@@ -428,9 +428,9 @@ export class FwsMemos {
     '340000001': {
       // TRUE NORTH REF
       flightPhaseInhib: [],
-      simVarIsActive: this.fws.trueNorthRef,
-      whichCodeToReturn: () => [0],
-      codesToReturn: ['340000001'],
+      simVarIsActive: this.fws.trueNorthRefMemo,
+      whichCodeToReturn: () => [this.fws.trueNorthRefBlinkingMemo ? 1 : 0],
+      codesToReturn: ['340000001', '340000002'],
       memoInhibit: () => false,
     },
     '340003001': {
@@ -438,7 +438,7 @@ export class FwsMemos {
       flightPhaseInhib: [3, 4, 5, 6, 7, 8, 9, 10, 11],
       simVarIsActive: this.fws.irInAlignMemo,
       whichCodeToReturn: () => [
-        FwsCore.irInAlignMessage(this.fws.irTimeToAlign, this.fws.oneEngineRunning.get(), this.fws.irInAlignProblem),
+        FwsCore.irInAlignMessage(this.fws.irTimeToAlign, this.fws.oneEngineRunning.get(), this.fws.oneIrAlignedError),
       ],
       codesToReturn: [
         '340003001',

@@ -1731,15 +1731,15 @@ export class FwsCore {
   public irTimeToAlign: number | null = null;
 
   public readonly irNotAlignedWarning = Subject.create(false);
-  private readonly ir1NotAlignedPulse = new NXLogicPulseNode(true);
-  private readonly ir2NotAlignedPulse = new NXLogicPulseNode(true);
-  private readonly ir3NotAlignedPulse = new NXLogicPulseNode(true);
+  private readonly ir1AlignErrorPulse = new NXLogicPulseNode(true);
+  private readonly ir2AlignErrorPulse = new NXLogicPulseNode(true);
+  private readonly ir3AlignErrorPulse = new NXLogicPulseNode(true);
   public irPositionDisagree = false;
   public irPositionMissing = false;
   public ir1ExcessMotion = false;
   public ir2ExcessMotion = false;
   public ir3ExcessMotion = false;
-  public irInAlignProblem = false;
+  public oneIrAlignedError = false;
 
   public ir1InAttAlign = false;
   public ir2InAttAlign = false;
@@ -1756,6 +1756,14 @@ export class FwsCore {
     this.ir2Fault,
     this.ir3Fault,
   );
+
+  private static readonly trueNorthPushedVar = RegisteredSimVar.createBoolean('L:A32NX_PUSH_TRUE_REF');
+
+  public readonly trueNorthRefMemo = Subject.create(false);
+
+  public trueNorthRefBlinkingMemo = false;
+
+  private readonly trueNorthRefBilnking10Seconds = new NXLogicConfirmNode(10, false);
 
   public readonly extremeLatitudeAlert = Subject.create(false);
 
@@ -1820,8 +1828,6 @@ export class FwsCore {
   public readonly flapsIndex = Subject.create(0);
 
   private stallWarningRaw = ConsumerValue.create(this.sub.on('stall_warning_on'), false);
-
-  public readonly trueNorthRef = Subject.create(false);
 
   /* SURVEILLANCE */
 
@@ -3538,23 +3544,20 @@ export class FwsCore {
     const ir1PositionDisagree = ir1MaintenanceWord.bitValueOr(18, false);
     const ir2PositionDisagree = ir2MaintenanceWord.bitValueOr(18, false);
     const ir3PositionDisagree = ir2MaintenanceWord.bitValueOr(18, false);
+    this.irPositionDisagree = ir1PositionDisagree || ir2PositionDisagree || ir3PositionDisagree;
     const ir1PositionMissing = ir1MaintenanceWord.bitValueOr(11, false) && this.ir1TimeToAlign === 1;
     const ir2PositionMissing = ir1MaintenanceWord.bitValueOr(11, false) && this.ir1TimeToAlign === 1;
     const ir3PositionMissing = ir1MaintenanceWord.bitValueOr(11, false) && this.ir1TimeToAlign === 1;
-
-    const ir1NotAligned = ir1PositionDisagree || ir1PositionMissing || this.ir1ExcessMotion;
-    const ir2NotAligned = ir2PositionDisagree || ir2PositionMissing || this.ir2ExcessMotion;
-    const ir3NotAligned = ir3PositionDisagree || ir3PositionMissing || this.ir3ExcessMotion;
-    this.ir1NotAlignedPulse.write(ir1NotAligned);
-    this.ir2NotAlignedPulse.write(ir2NotAligned);
-    this.ir3NotAlignedPulse.write(ir3NotAligned);
-    this.irInAlignProblem = ir1NotAligned || ir2NotAligned || ir3NotAligned;
+    this.irPositionMissing = ir1PositionMissing || ir2PositionMissing || ir3PositionDisagree;
+    const ir1AlignError = ir1PositionDisagree || ir1PositionMissing || this.ir1ExcessMotion;
+    const ir2AlignError = ir2PositionDisagree || ir2PositionMissing || this.ir2ExcessMotion;
+    const ir3AlignError = ir3PositionDisagree || ir3PositionMissing || this.ir3ExcessMotion;
+    const ir1ErrorPulse = this.ir1AlignErrorPulse.write(ir1AlignError);
+    const ir2ErrorPulse = this.ir2AlignErrorPulse.write(ir2AlignError);
+    const ir3ErrorPulse = this.ir3AlignErrorPulse.write(ir3AlignError);
+    this.oneIrAlignedError = ir1AlignError || ir2AlignError || ir3AlignError;
     this.irNotAlignedWarning.set(
-      this.irInAlignProblem &&
-        !this.ir1NotAlignedPulse.read() &&
-        !this.ir2NotAlignedPulse.read() &&
-        !this.ir3NotAlignedPulse.read() &&
-        flightPhase !== 1,
+      this.oneIrAlignedError && !ir1ErrorPulse && !ir2ErrorPulse && !ir3ErrorPulse && flightPhase !== 1,
     );
 
     this.ir1InAttAlign = ir1Pitch.isNoComputedData() && ir1MaintenanceWord.bitValueOr(1, false);
@@ -3575,7 +3578,12 @@ export class FwsCore {
     this.height3Failed.set(this.radioHeight3.isFailureWarning());
     // overspeed
 
-    this.trueNorthRef.set(SimVar.GetSimVarValue('L:A32NX_PUSH_TRUE_REF', 'number'));
+    const trueRefSelected = FwsCore.trueNorthPushedVar.get();
+    this.trueNorthRefMemo.set(trueRefSelected);
+    this.trueNorthRefBlinkingMemo = this.trueNorthRefBilnking10Seconds.write(
+      trueRefSelected && this.flightPhase1Or2.get() && !this.slatsRetracted.get(),
+      deltaTime,
+    );
 
     /* V1 callout */
     const v1 = SimVar.GetSimVarValue('L:AIRLINER_V1_SPEED', SimVarValueType.Knots);
