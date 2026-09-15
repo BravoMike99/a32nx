@@ -1425,6 +1425,8 @@ export class FwsCore {
 
   public readonly flightPhase = Subject.create<FwcFlightPhase>(FwcFlightPhase.ElecPwr);
 
+  public readonly flightPhase2 = this.flightPhase.map((v) => v === 2);
+
   public readonly flightPhase1Or2 = this.flightPhase.map((v) => v === 1 || v === 2);
 
   public readonly flightPhase128 = this.flightPhase.map((v) => v === 1 || v === 2 || v === 8);
@@ -2779,68 +2781,68 @@ export class FwsCore {
     return array;
   }
 
-  public static irInAlignMessage(timeToAlign: number | null, engineRunning: boolean, alignProblem: boolean): number {
+  public static irInAlignMessage(timeToAlign: number | null, flightPhase2: boolean, alignProblem: boolean): number {
     let rowChoice = 0;
     if (timeToAlign !== null) {
       switch (true) {
-        case timeToAlign >= 7 && !engineRunning:
+        case timeToAlign >= 7 && !flightPhase2:
           rowChoice = 0;
           break;
-        case timeToAlign >= 7 && engineRunning:
+        case timeToAlign >= 7 && flightPhase2:
           rowChoice = 1;
           break;
         case timeToAlign >= 7 && alignProblem:
           rowChoice = 2;
           break;
-        case timeToAlign === 6 && !engineRunning:
+        case timeToAlign === 6 && !flightPhase2:
           rowChoice = 3;
           break;
-        case timeToAlign === 6 && engineRunning:
+        case timeToAlign === 6 && flightPhase2:
           rowChoice = 4;
           break;
         case timeToAlign === 6 && alignProblem:
           rowChoice = 5;
           break;
-        case timeToAlign === 5 && !engineRunning:
+        case timeToAlign === 5 && !flightPhase2:
           rowChoice = 6;
           break;
-        case timeToAlign === 5 && engineRunning:
+        case timeToAlign === 5 && flightPhase2:
           rowChoice = 7;
           break;
         case timeToAlign === 5 && alignProblem:
           rowChoice = 8;
           break;
-        case timeToAlign === 4 && !engineRunning:
+        case timeToAlign === 4 && !flightPhase2:
           rowChoice = 9;
           break;
-        case timeToAlign === 4 && engineRunning:
+        case timeToAlign === 4 && flightPhase2:
           rowChoice = 10;
           break;
         case timeToAlign === 4 && alignProblem:
           rowChoice = 11;
           break;
-        case timeToAlign === 3 && !engineRunning:
+        case timeToAlign === 3 && !flightPhase2:
           rowChoice = 12;
           break;
-        case timeToAlign === 3 && engineRunning:
+        case timeToAlign === 3 && flightPhase2:
           rowChoice = 13;
           break;
         case timeToAlign === 3 && alignProblem:
           rowChoice = 14;
           break;
-        case timeToAlign === 2 && !engineRunning:
+        case timeToAlign === 2 && !flightPhase2:
           rowChoice = 15;
           break;
-        case timeToAlign === 2 && engineRunning:
+        case timeToAlign === 2 && flightPhase2:
           rowChoice = 16;
           break;
         case timeToAlign === 2 && alignProblem:
           rowChoice = 17;
           break;
-        case timeToAlign === 1 && !engineRunning:
+        case timeToAlign === 1 && !flightPhase2:
           rowChoice = 18;
           break;
-        case timeToAlign === 1 && engineRunning:
+        case timeToAlign === 1 && flightPhase2:
           rowChoice = 19;
           break;
         case timeToAlign === 1 && alignProblem:

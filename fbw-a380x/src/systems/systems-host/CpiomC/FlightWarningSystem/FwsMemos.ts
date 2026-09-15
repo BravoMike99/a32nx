@@ -438,7 +438,7 @@ export class FwsMemos {
       flightPhaseInhib: [3, 4, 5, 6, 7, 8, 9, 10, 11],
       simVarIsActive: this.fws.irInAlignMemo,
       whichCodeToReturn: () => [
-        FwsCore.irInAlignMessage(this.fws.irTimeToAlign, this.fws.oneEngineRunning.get(), this.fws.oneIrAlignedError),
+        FwsCore.irInAlignMessage(this.fws.irTimeToAlign, this.fws.flightPhase2.get(), this.fws.oneIrAlignedError),
       ],
       codesToReturn: [
         '340003001',

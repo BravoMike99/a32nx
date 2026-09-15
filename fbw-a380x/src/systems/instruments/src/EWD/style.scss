@@ -626,17 +626,16 @@ text, tspan, span {
   animation-iteration-count: infinite;
 }
 
-@mixin GenericMemoFlashing($color, $name) {
+@mixin BackGroundFlashing($color, $name) {
   @keyframes #{$name} {
     0% {
-    color: $display-white !important;
+    ffill: transparent;
     }
     50% {
-    color: $display-background !important;
-    background-color: $color !important;
+    fill: $color;
     }
     100% {
-    color: $display-white !important;
+    fill: transparent;
     }
   }
   animation-name: $name;
@@ -645,18 +644,44 @@ text, tspan, span {
   animation-iteration-count: infinite;
 }
 
-.Green.DimColor {
-    color: scale-color($display-green, $lightness: -50%) !important;
+.BackGroundFlashingAmber {
+  @include BackGroundFlashing($display-amber, amber-memo-flashing);
+  animation-duration: 1s;
+  animation-iteration-count: infinite;
 }
 
-.Green.MemoFlashing {
-  @include GenericMemoFlashing($display-green, green-memo-flashing);
+.BackGroundFlashingGreen {
+  @include BackGroundFlashing($display-green, green-memo-flashing);
+  animation-duration: 1s;
+  animation-iteration-count: infinite;
 }
 
-.Amber.MemoFlashing {
-  @include GenericMemoFlashing($display-amber, amber-memo-flashing);
+  @keyframes memo-flashing {
+    0% {
+    fill: $display-white;
+    }
+    50% {
+    fill: $display-background;
+    }
+    100% {
+    fill: $display-white;
+    }
 }
 
-.Amber.DimColor {
-    color: scale-color($display-amber, $lightness: -50%) !important;
+.MemoFlashing {
+  fill: $display-white;
+  animation: memo-flashing 1s steps(1, end) infinite;
+}
+
+
+.Green.MemoPulsing {
+  @include GenericPulsingFill($display-green, pulse-green-memo);
+  animation-duration: 1s;
+  animation-iteration-count: infinite;
+}
+
+.Amber.MemoPulsing {
+  @include GenericPulsingFill($display-amber, pulse-amber-memo);
+  animation-duration: 1s;
+  animation-iteration-count: infinite;
 }
