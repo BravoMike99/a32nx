@@ -22,6 +22,7 @@ import {
 // FIXME should not import from instruments
 import { ChecklistState, FwsEvents } from '../../../shared/src/publishers/FwsPublisher';
 import { FwcAuralWarning, FwsCore, FwsSuppressableItem } from './FwsCore';
+import { NXLogicMemoryNode, NXLogicPulseNode } from '@flybywiresim/fbw-sdk';
 
 export interface EwdAbnormalItem extends FwsSuppressableItem {
   flightPhaseInhib: number[];
@@ -106,6 +107,9 @@ export class FwsAbnormalSensed {
 
   /** For overflowing checklists */
   public readonly showFromLine = Subject.create(0);
+
+  private readonly statusAutoDisplayMemoryNode = new NXLogicMemoryNode(false);
+  private readonly statusAutoDisplayPulse = new NXLogicPulseNode();
 
   private procedures: ProcedureLinesGenerator[] = [];
 
@@ -269,15 +273,17 @@ export class FwsAbnormalSensed {
   }
 
   private checkIfStsAutoDisplay() {
-    const approachCondition =
+    const flightPhase = this.fws.flightPhase.get();
+    const autoCallStatus = this.statusAutoDisplayMemoryNode.write(
       this.fws.presentedAbnormalProceduresList.get().size === 0 &&
-      this.fws.flightPhase.get() === 8 &&
-      (this.fws.adrPressureAltitude.get() ?? 0) < 20_000 &&
-      !this.fws.ecamStatusNormal.get();
-    const triggerAutoDisplay =
-      this.fws.approachAutoDisplayQnhSetPulseNode.read() || this.fws.approachAutoDisplaySlatsExtendedPulseNode.read();
-
-    if (approachCondition && triggerAutoDisplay) {
+        (flightPhase === 8 || flightPhase === 9) &&
+        (this.fws.adrPressureAltitude.get() ?? 0) < 20_000 &&
+        !this.fws.ecamStatusNormal.get() &&
+        (this.fws.approachAutoDisplayQnhSetPulseNode.read() ||
+          this.fws.approachAutoDisplaySlatsExtendedPulseNode.read()),
+      this.fws.flightPhase8Or10PulseNode.read(),
+    );
+    if (this.statusAutoDisplayPulse.write(autoCallStatus)) {
       // Call STS page on SD
       SimVar.SetSimVarValue('L:A32NX_ECAM_SD_CURRENT_PAGE_INDEX', SimVarValueType.Enum, SdPages.Status);
     }

@@ -344,6 +344,7 @@ export class FwsCore {
 
   public readonly approachAutoDisplayQnhSetPulseNode = new NXLogicPulseNode(true);
   public readonly approachAutoDisplaySlatsExtendedPulseNode = new NXLogicPulseNode(true);
+  public readonly flightPhase8Or10PulseNode = new NXLogicPulseNode();
 
   /* MISC STUFF */
 
@@ -3013,6 +3014,7 @@ export class FwsCore {
     const phase6 = flightPhase === 6;
     const flightPhase8 = flightPhase === 8;
     this.flightPhase3PulseNode.write(phase3);
+    this.flightPhase8Or10PulseNode.write(flightPhase === 10 || flightPhase8);
 
     // flight phase convinence vars
     const flightPhase6789 = this.flightPhase6789.get();
