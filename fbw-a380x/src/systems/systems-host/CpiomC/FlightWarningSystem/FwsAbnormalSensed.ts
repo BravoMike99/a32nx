@@ -245,7 +245,7 @@ export class FwsAbnormalSensed {
 
     const numFailures = this.fws.presentedFailures.length;
     if (numFailures === 1) {
-      if (!this.fws.ecamStatusNormal.get()) {
+      if (!this.fws.ecamStatusNormal) {
         // Call STS page on SD
         SimVar.SetSimVarValue('L:A32NX_ECAM_SD_CURRENT_PAGE_INDEX', SimVarValueType.Enum, SdPages.Status);
       }
@@ -278,7 +278,7 @@ export class FwsAbnormalSensed {
       this.fws.presentedAbnormalProceduresList.get().size === 0 &&
         (flightPhase === 8 || flightPhase === 9) &&
         (this.fws.adrPressureAltitude.get() ?? 0) < 20_000 &&
-        !this.fws.ecamStatusNormal.get() &&
+        !this.fws.ecamStatusNormal &&
         (this.fws.approachAutoDisplayQnhSetPulseNode.read() ||
           this.fws.approachAutoDisplaySlatsExtendedPulseNode.read()),
       this.fws.flightPhase8Or10PulseNode.read(),

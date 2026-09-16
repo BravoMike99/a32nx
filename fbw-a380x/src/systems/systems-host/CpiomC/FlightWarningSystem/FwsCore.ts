@@ -333,7 +333,7 @@ export class FwsCore {
     this.startupCompleted,
   );
 
-  public readonly ecamStatusNormal = Subject.create(true); // ECAM STATUS NORMAL
+  public ecamStatusNormal = false; // ECAM STATUS NORMAL
 
   public readonly ecamEwdShowStsIndication = Subject.create(false);
 
@@ -2754,7 +2754,6 @@ export class FwsCore {
     );
 
     this.subs.push(
-      this.ecamStatusNormal.sub((s) => SimVar.SetSimVarValue('L:A32NX_STATUS_NORMAL', 'boolean', s), true),
       this.ecamEwdShowStsIndication.sub((s) => this.publisher.pub('fws_show_sts_indication', s, true), true),
       this.ecamEwdShowFailurePendingIndication.sub(
         (s) => this.publisher.pub('fws_show_failure_pending', s, true),
@@ -6191,19 +6190,6 @@ export class FwsCore {
     }
     this.pfdLimitationsLines.forEach((l, i) => l.set(pfdLimitationsCombined[i] ?? ''));
 
-    this.ecamStatusNormal.set(
-      !stsInfoKeys.length &&
-        !stsInopAllPhasesKeys.length &&
-        !stsInopApprLdgKeys.length &&
-        !ewdLimitationsAllPhasesKeys.length &&
-        !ewdLimitationsApprLdgKeys.length,
-    );
-    const sdStsShown = SimVar.GetSimVarValue('L:A32NX_ECAM_SD_CURRENT_PAGE_INDEX', SimVarValueType.Number) === 14;
-    this.ecamEwdShowStsIndication.set(!this.ecamStatusNormal.get() && !sdStsShown);
-
-    this.approachAutoDisplayQnhSetPulseNode.write(Simplane.getPressureSelectedMode(Aircraft.A320_NEO) !== 'STD');
-    this.approachAutoDisplaySlatsExtendedPulseNode.write(!this.flapLeverZero.get());
-
     const chimeRequested =
       (this.auralSingleChimePending || this.requestSingleChimeFromAThrOff) && !this.auralCrcActive.get();
     if (chimeRequested && !this.auralSingleChimeInhibitTimer.isPending()) {
@@ -6268,6 +6254,19 @@ export class FwsCore {
       this.abnormalSensed.abnormalShown.set(false);
       this.ecamEwdShowFailurePendingIndication.set(false);
     }
+    this.ecamStatusNormal =
+      !stsInfoKeys.length &&
+      !stsInopAllPhasesKeys.length &&
+      !stsInopApprLdgKeys.length &&
+      !ewdLimitationsAllPhasesKeys.length &&
+      !ewdLimitationsApprLdgKeys.length;
+    const sdStsShown = SimVar.GetSimVarValue('L:A32NX_ECAM_SD_CURRENT_PAGE_INDEX', SimVarValueType.Number) === 14;
+    this.ecamEwdShowStsIndication.set(
+      !this.ecamStatusNormal && !sdStsShown && this.presentedAbnormalProceduresList.get().size === 0,
+    );
+
+    this.approachAutoDisplayQnhSetPulseNode.write(Simplane.getPressureSelectedMode(Aircraft.A320_NEO) !== 'STD');
+    this.approachAutoDisplaySlatsExtendedPulseNode.write(!this.flapLeverZero.get());
     this.publisher.pub('fws_show_abn_non_sensed', this.abnormalNonSensed.abnProcShown.get(), true);
     this.publisher.pub('fws_show_abn_sensed', this.abnormalSensed.abnormalShown.get(), true);
     this.publisher.pub('fws_show_normal_checklists', this.normalChecklists.checklistShown.get(), true);
@@ -6326,7 +6325,7 @@ export class FwsCore {
   updateOisDebugData() {
     this.debugDataToOis[0].value = this.flightPhase.get().toFixed(0);
     this.debugDataToOis[1].value = this.startupCompleted.get() ? 'true' : 'false';
-    this.debugDataToOis[2].value = this.ecamStatusNormal.get() ? 'true' : 'false';
+    this.debugDataToOis[2].value = this.ecamStatusNormal ? 'true' : 'false';
     this.debugDataToOis[3].value = this.allCurrentFailures.length.toString();
     this.debugDataToOis[4].value = this.presentedFailures.length.toString();
     this.debugDataToOis[5].value = this.aircraftOnGround.get() ? 'true' : 'false';
@@ -6338,7 +6337,6 @@ export class FwsCore {
 
   static sendFailureWarning(bus: EventBus) {
     // In case of FWS1+2 failure, populate output with FW messages
-    SimVar.SetSimVarValue('L:A32NX_STATUS_NORMAL', SimVarValueType.Bool, true);
     SimVar.SetSimVarValue('L:A32NX_ECAM_FAILURE_ACTIVE', SimVarValueType.Bool, false);
     SimVar.SetSimVarValue('L:A32NX_ECAM_SFAIL', SimVarValueType.Number, -1);
     SimVar.SetSimVarValue('L:A32NX_MASTER_CAUTION', SimVarValueType.Bool, false);

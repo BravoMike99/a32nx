@@ -852,9 +852,9 @@ export class FwsNormalChecklists {
         case A380XCustomChecklistSensedItemType.RUDDER_TRIM_NEUTRAL:
           return () => this.rudderTrimNeutralForTakeoff.get();
         case A380XCustomChecklistSensedItemType.ECAM_STS_NORMAL:
-          return () => this.fws.ecamStatusNormal.get();
+          return () => this.fws.ecamStatusNormal;
         case A380XCustomChecklistSensedItemType.ECAM_STS_NOT_NORMAL:
-          return () => !this.fws.ecamStatusNormal.get();
+          return () => !this.fws.ecamStatusNormal;
         case A380XCustomChecklistSensedItemType.GEAR_UP:
           return () => !this.fws.gearSelectedUp.get();
         case A380XCustomChecklistSensedItemType.GEAR_DOWN:
