@@ -1,7 +1,7 @@
 // Copyright (c) 2024-2026 FlyByWire Simulations
 // SPDX-License-Identifier: GPL-3.0
 
-import { Subject } from '@microsoft/msfs-sdk';
+import { Accessible, AccessibleUtils, Subject, Subscribable } from '@microsoft/msfs-sdk';
 import {
   AbnormalProcedure,
   ChecklistAction,
@@ -52,9 +52,8 @@ export const SPECIAL_INDEX_DEFERRED_PAGE_CLEAR = -99;
 
 export class ProcedureLinesGenerator {
   public readonly selectedItemIndex = Subject.create(0);
-
-  private procedure: AbnormalProcedure | NormalProcedure | DeferredProcedure | undefined = undefined;
-  private items: (
+  private readonly procedure: AbnormalProcedure | NormalProcedure | DeferredProcedure | undefined = undefined;
+  private readonly items: (
     | ChecklistAction
     | ChecklistCondition
     | ChecklistSpecialItem
@@ -62,9 +61,11 @@ export class ProcedureLinesGenerator {
     | TimedChecklistCondition
   )[] = [];
 
+  private readonly procedureIsActive: Accessible<boolean>;
+
   constructor(
     public procedureId: string,
-    public procedureIsActive: boolean,
+    procedureIsActive: boolean | Subscribable<boolean>,
     private type: ProcedureType,
     public checklistState: ChecklistState,
     private itemCheckedCallback?: (newState: ChecklistState) => void,
@@ -74,6 +75,7 @@ export class ProcedureLinesGenerator {
     private isLastProcedure: boolean = false,
     private normalChecklists?: NormalProcedure[],
   ) {
+    this.procedureIsActive = AccessibleUtils.toAccessible(procedureIsActive, true);
     if (type === ProcedureType.Normal) {
       const idx = this.normalChecklists?.findIndex((p) => p.type === parseInt(procedureId));
       if (idx == null) {
@@ -418,11 +420,12 @@ export class ProcedureLinesGenerator {
     const isAbnormalNotSensed =
       this.type === ProcedureType.Abnormal && EcamAbnormalProcedures[this.procedureId]?.sensed === false;
     const isDeferred = this.type === ProcedureType.Deferred;
+    const procedureIsActive = this.procedureIsActive.get();
 
     if (isDeferred) {
       lineData.push({
         abnormalProcedure: true,
-        activeProcedure: this.procedureIsActive,
+        activeProcedure: procedureIsActive,
         sensed: true,
         checked: false,
         text: `${this.checklistState.procedureCompleted ? '\x1b<7m> ' : '\x1b<4m> '}${this.procedure?.title ?? 'UNDEFINED'}`,
@@ -433,21 +436,21 @@ export class ProcedureLinesGenerator {
     } else {
       lineData.push({
         abnormalProcedure: isAbnormalOrDeferred,
-        activeProcedure: this.procedureIsActive,
+        activeProcedure: procedureIsActive,
         sensed: true,
         checked: false,
         text: this.procedure?.title ?? 'UNDEFINED',
         style: ChecklistLineStyle.Headline,
         firstLine: true,
-        lastLine: this.procedureIsActive ? false : true,
+        lastLine: procedureIsActive ? false : true,
       });
     }
 
-    if (!isAbnormal || this.procedureIsActive || this.type === ProcedureType.FwsFailedFallback) {
+    if (!isAbnormal || procedureIsActive || this.type === ProcedureType.FwsFailedFallback) {
       if (this.recommendation) {
         lineData.push({
           abnormalProcedure: isAbnormalOrDeferred,
-          activeProcedure: this.procedureIsActive,
+          activeProcedure: procedureIsActive,
           sensed: true,
           checked: false,
           text: this.recommendation,
@@ -460,7 +463,7 @@ export class ProcedureLinesGenerator {
       if ((isDeferred && !this.checklistState.procedureCompleted) || isAbnormalNotSensed) {
         lineData.push({
           abnormalProcedure: isAbnormalOrDeferred,
-          activeProcedure: this.procedureIsActive,
+          activeProcedure: procedureIsActive,
           sensed: false,
           checked: this.checklistState.procedureActivated ?? false,
           text: `${'\xa0'.repeat(31)}ACTIVATE`,
@@ -510,13 +513,13 @@ export class ProcedureLinesGenerator {
         lineData.push({
           procedureId: this.procedureId,
           abnormalProcedure: isAbnormalOrDeferred,
-          activeProcedure: this.procedureIsActive,
+          activeProcedure: procedureIsActive,
           sensed: isCondition ? true : item.sensed,
           checked: this.checklistState.itemsChecked[itemIndex],
           text: text.substring(0, WD_LINE_CHARACTERS - 1),
           style: clStyle,
-          firstLine: (!this.procedureIsActive && isAbnormal) || this.type === ProcedureType.FwsFailedFallback,
-          lastLine: (!this.procedureIsActive && isAbnormal) || this.type === ProcedureType.FwsFailedFallback,
+          firstLine: (!procedureIsActive && isAbnormal) || this.type === ProcedureType.FwsFailedFallback,
+          lastLine: (!procedureIsActive && isAbnormal) || this.type === ProcedureType.FwsFailedFallback,
           originalItemIndex: !isCondition || (isCondition && item.sensed) ? itemIndex : undefined, // FIXME It should be possible to scroll to non sensed conditions
           inactive: inactive,
           specialLine: clStyle === ChecklistLineStyle.Empty ? WdSpecialLine.Empty : undefined,
@@ -535,13 +538,13 @@ export class ProcedureLinesGenerator {
           const confirmText = `${item.level ? '\xa0'.repeat(item.level) : ''}CONFIRM ${itemNameWithoutConditionHeader}`;
           lineData.push({
             abnormalProcedure: isAbnormalOrDeferred,
-            activeProcedure: this.procedureIsActive,
+            activeProcedure: procedureIsActive,
             sensed: item.sensed,
             checked: this.checklistState.itemsChecked[itemIndex],
             text: confirmText,
             style: clStyle,
-            firstLine: !this.procedureIsActive && isAbnormal,
-            lastLine: !this.procedureIsActive && isAbnormal,
+            firstLine: !procedureIsActive && isAbnormal,
+            lastLine: !procedureIsActive && isAbnormal,
             originalItemIndex: itemIndex,
             inactive: inactive,
           });
@@ -551,7 +554,7 @@ export class ProcedureLinesGenerator {
       if (isAbnormal && this.type !== ProcedureType.FwsFailedFallback) {
         lineData.push({
           abnormalProcedure: isAbnormalOrDeferred,
-          activeProcedure: this.procedureIsActive,
+          activeProcedure: procedureIsActive,
           sensed: false,
           checked: false,
           text: `${'\xa0'.repeat(34)}CLEAR`,
@@ -562,7 +565,7 @@ export class ProcedureLinesGenerator {
         });
       } else if (this.type === ProcedureType.Normal) {
         lineData.push({
-          activeProcedure: this.procedureIsActive,
+          activeProcedure: procedureIsActive,
           sensed: false,
           checked: this.checklistState.procedureCompleted ?? false,
           text: `C/L COMPLETE${this.procedureId === DEPARTURE_CHANGE_NORMAL_CHECKLIST_ID_TEXT ? ' AND RESET' : ''}`.padStart(
@@ -576,7 +579,7 @@ export class ProcedureLinesGenerator {
         });
 
         lineData.push({
-          activeProcedure: this.procedureIsActive,
+          activeProcedure: procedureIsActive,
           sensed: false,
           checked: false,
           text: `${'\xa0'.repeat(34)}RESET`,
@@ -588,7 +591,7 @@ export class ProcedureLinesGenerator {
       } else if (isDeferred) {
         if (this.checklistState.procedureCompleted) {
           lineData.push({
-            activeProcedure: this.procedureIsActive,
+            activeProcedure: procedureIsActive,
             sensed: false,
             checked: false,
             text: `${'\xa0'.repeat(19)}DEFERRED PROC RECALL`,
@@ -600,7 +603,7 @@ export class ProcedureLinesGenerator {
           });
         } else {
           lineData.push({
-            activeProcedure: this.procedureIsActive,
+            activeProcedure: procedureIsActive,
             sensed: false,
             checked: this.checklistState.procedureCompleted ?? false,
             text: `${'\xa0'.repeat(17)}DEFERRED PROC COMPLETE`,
@@ -629,7 +632,7 @@ export class ProcedureLinesGenerator {
     // Empty line after procedure
     lineData.push({
       abnormalProcedure: isAbnormalOrDeferred,
-      activeProcedure: this.procedureIsActive || isDeferred,
+      activeProcedure: procedureIsActive || isDeferred,
       sensed: true,
       checked: false,
       text: '',

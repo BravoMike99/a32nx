@@ -1,6 +1,6 @@
-// Copyright (c) 2024-2025 FlyByWire Simulations
+// Copyright (c) 2024-2026 FlyByWire Simulations
 // SPDX-License-Identifier: GPL-3.0
-import { ConsumerSubject, MappedSubject, Subject, SubscribableMapFunctions, VNode } from '@microsoft/msfs-sdk';
+import { ConsumerSubject, MappedSubject, SubscribableMapFunctions, VNode } from '@microsoft/msfs-sdk';
 import { ProcedureLinesGenerator, ProcedureType } from '../../MsfsAvionicsCommon/EcamMessages/ProcedureLinesGenerator';
 
 import { WdAbstractChecklistComponent } from './WdAbstractChecklistComponent';
@@ -90,7 +90,7 @@ export class WdAbnormalSensedProcedures extends WdAbstractChecklistComponent {
         };
         const procGenFwsFailedFallback = new ProcedureLinesGenerator(
           '314800003',
-          Subject.create(false),
+          false,
           ProcedureType.FwsFailedFallback,
           fwsFailedFallbackClState,
         );
@@ -107,7 +107,7 @@ export class WdAbnormalSensedProcedures extends WdAbstractChecklistComponent {
         };
         const procGenFwsFailedFallback = new ProcedureLinesGenerator(
           '314800004',
-          Subject.create(false),
+          false,
           ProcedureType.FwsFailedFallback,
           fwsFailedFallbackClState,
         );

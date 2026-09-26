@@ -1,4 +1,4 @@
-// Copyright (c) 2025 FlyByWire Simulations
+// Copyright (c) 2025-2026 FlyByWire Simulations
 // SPDX-License-Identifier: GPL-3.0
 
 import { Arinc429Register, RegisteredSimVar } from '@flybywiresim/fbw-sdk';
@@ -19,7 +19,7 @@ const MORE_AVAILABLE_FOR_PAGES = [SdPages.Status];
 export class FwsSystemDisplayLogic {
   private readonly subscriptions: Subscription[] = [];
 
-  private readonly sdCurrentPageIndexSimvar = RegisteredSimVar.create<SdPages>(
+  public static readonly sdCurrentPageIndexSimvar = RegisteredSimVar.create<SdPages>(
     'L:A32NX_ECAM_SD_CURRENT_PAGE_INDEX',
     SimVarValueType.Enum,
   );
@@ -78,7 +78,7 @@ export class FwsSystemDisplayLogic {
           const numberOfPages = this.stsNumberOfPagesSimvar.get();
           if (currentPage + 2 > numberOfPages) {
             this.stsPageToShowSimvar.set(0);
-            this.sdCurrentPageIndexSimvar.set(SdPages.None);
+            FwsSystemDisplayLogic.sdCurrentPageIndexSimvar.set(SdPages.None);
             this.sdMoreShownSimvar.set(0);
           } else {
             this.stsPageToShowSimvar.set(currentPage + 1);
@@ -103,7 +103,7 @@ export class FwsSystemDisplayLogic {
     const ecamAllButtonPushed = this.ecamAllButtonPushedSimvar.get();
     this.apuRpm.setFromSimVar('L:A32NX_APU_N');
 
-    this.userSelectedPage.set(this.sdCurrentPageIndexSimvar.get());
+    this.userSelectedPage.set(FwsSystemDisplayLogic.sdCurrentPageIndexSimvar.get());
     if (this.waitingForSimvarSync !== SdPages.None) {
       if (this.userSelectedPage.get() === this.waitingForSimvarSync || this.userSelectedPage.get() === SdPages.None) {
         this.waitingForSimvarSync = SdPages.None;
@@ -114,7 +114,7 @@ export class FwsSystemDisplayLogic {
       const t = this.ecamButtonLightDelayTimer.get();
       this.ecamButtonLightDelayTimer.set(t - deltaTime);
       if (this.ecamButtonLightDelayTimer.get() <= 0) {
-        this.sdCurrentPageIndexSimvar.set(this.currentPage.get());
+        FwsSystemDisplayLogic.sdCurrentPageIndexSimvar.set(this.currentPage.get());
         this.waitingForSimvarSync = this.currentPage.get();
         this.ecamButtonLightDelayTimer.set(Number.MIN_SAFE_INTEGER);
       }
@@ -247,7 +247,7 @@ export class FwsSystemDisplayLogic {
 
         // Disable user selected page when new failure detected
         if (this.prevFailPage.get() !== failPage) {
-          this.sdCurrentPageIndexSimvar.set(SdPages.None);
+          FwsSystemDisplayLogic.sdCurrentPageIndexSimvar.set(SdPages.None);
           this.userSelectedPage.set(SdPages.None);
           this.currentPage.set(failPage);
         }
@@ -301,7 +301,7 @@ export class FwsSystemDisplayLogic {
   };
 
   private checkStsPage = (deltaTime: number) => {
-    const isStatusPageEmpty = this.fws.ecamStatusNormal.get();
+    const isStatusPageEmpty = this.fws.ecamStatusNormal;
 
     if (this.currentPage.get() !== SdPages.Status) {
       this.stsPressedTimer.set(STS_DISPLAY_TIMER_DURATION);
@@ -314,7 +314,7 @@ export class FwsSystemDisplayLogic {
         this.stsPressedTimer.set(prev - deltaTime / 1000);
         this.pageWhenUnselected.set(SdPages.Status);
       } else {
-        this.sdCurrentPageIndexSimvar.set(this.stsPrevPage.get());
+        FwsSystemDisplayLogic.sdCurrentPageIndexSimvar.set(this.stsPrevPage.get());
       }
     } else {
       this.stsPressedTimer.set(STS_DISPLAY_TIMER_DURATION);

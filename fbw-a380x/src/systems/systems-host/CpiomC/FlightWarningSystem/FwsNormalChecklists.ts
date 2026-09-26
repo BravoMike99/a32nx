@@ -243,6 +243,9 @@ export class FwsNormalChecklists {
   private readonly normalChecklistCompletedMtrigPulse = new NXLogicPulseNode(false);
   private readonly normalChecklistBeingCompletedMtrig = new NXLogicTriggeredMonostableNode(1);
 
+  private readonly defferedProcedureAutoDisplayMemoryNode = new NXLogicMemoryNode(false);
+  private readonly defferedProcedureAutoDisplayPulse = new NXLogicPulseNode();
+
   constructor(private fws: FwsCore) {
     this.initializeChecklistState();
     this.subscriptions.push(
@@ -534,16 +537,13 @@ export class FwsNormalChecklists {
   }
 
   private checkIfDeferredAutoDisplay() {
-    const approachCondition =
-      this.fws.presentedAbnormalProceduresList.get().size === 0 &&
-      this.fws.flightPhase.get() === 8 &&
-      (this.fws.adrPressureAltitude.get() ?? 0) < 20_000 &&
-      this.hasDeferred.some((v) => v) &&
-      this.deferredIsCompleted.some((v) => !v);
-    const triggerAutoDisplay =
-      this.fws.approachAutoDisplayQnhSetPulseNode.read() || this.fws.approachAutoDisplaySlatsExtendedPulseNode.read();
-
-    if (approachCondition && triggerAutoDisplay && !this.showChecklistRequested.get()) {
+    const autoCallDeffered = this.defferedProcedureAutoDisplayMemoryNode.write(
+      this.fws.approachAutoDisplayPageCommonCondition &&
+        this.hasDeferred.some((v) => v) &&
+        this.deferredIsCompleted.some((v) => !v),
+      this.fws.flightPhase8Or10PulseNode.read(),
+    );
+    if (this.defferedProcedureAutoDisplayPulse.write(autoCallDeffered && !this.showChecklistRequested.get())) {
       this.showChecklistRequested.set(true);
       this.navigateToChecklist(CHECKLIST_OVERVIEW_ID);
     }

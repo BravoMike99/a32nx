@@ -93,6 +93,7 @@ import {
 import { FcdcBusEvents } from '@shared/publishers/FcdcPublisher';
 import { FwsAutoCallouts } from './FwsAutoCallouts';
 import { A380XCustomEcamDefinition } from './EcamDefinition/CustomEcamDefinition';
+import { SdPages } from '@shared/EcamSystemPages';
 
 export function xor(a: boolean, b: boolean): boolean {
   return !!((a ? 1 : 0) ^ (b ? 1 : 0));
@@ -342,8 +343,9 @@ export class FwsCore {
   public readonly fwc1Out126 = Arinc429RegisterSubject.createEmpty();
   public readonly fwc2Out126 = Arinc429RegisterSubject.createEmpty();
 
-  public readonly approachAutoDisplayQnhSetPulseNode = new NXLogicPulseNode(true);
-  public readonly approachAutoDisplaySlatsExtendedPulseNode = new NXLogicPulseNode(true);
+  public approachAutoDisplayPageCommonCondition = false;
+  private readonly approachAutoDisplayQnhSetPulseNode = new NXLogicPulseNode(true);
+  private readonly approachAutoDisplaySlatsExtendedPulseNode = new NXLogicPulseNode(true);
   public readonly flightPhase8Or10PulseNode = new NXLogicPulseNode();
 
   /* MISC STUFF */
@@ -2413,6 +2415,10 @@ export class FwsCore {
   public allSuppressableItems: FwsSuppressableItemDict;
   private readonly failureActivationTime = new Map<keyof FwsSuppressableItemDict, number>();
 
+  private readonly procedureShowFromLine = Subject.create(0);
+  private readonly procedureActiveItem = Subject.create(0);
+  private readonly activeProcedureId = Subject.create<string>('');
+
   constructor(
     public readonly fwsNumber: 1 | 2,
     public readonly bus: EventBus,
@@ -2759,6 +2765,12 @@ export class FwsCore {
         (s) => this.publisher.pub('fws_show_failure_pending', s, true),
         true,
       ),
+      this.abnormalNonSensed.abnProcShown.sub((s) => this.publisher.pub('fws_show_abn_non_sensed', s, true), true),
+      this.abnormalSensed.abnormalShown.sub((s) => this.publisher.pub('fws_show_abn_sensed', s, true), true),
+      this.normalChecklists.checklistShown.sub((s) => this.publisher.pub('fws_show_normal_checklists', s, true), true),
+      this.activeProcedureId.sub((s) => this.publisher.pub('fws_active_procedure', s, true)),
+      this.procedureShowFromLine.sub((s) => this.publisher.pub('fws_show_from_line', s, true)),
+      this.procedureActiveItem.sub((s) => this.publisher.pub('fws_active_item', s, true)),
     );
 
     this.subs.push(
@@ -6219,9 +6231,8 @@ export class FwsCore {
       this.abnormalNonSensed.abnProcShown.set(true);
       this.normalChecklists.checklistShown.set(false);
       this.abnormalSensed.abnormalShown.set(false);
-
-      this.publisher.pub('fws_active_item', this.abnormalNonSensed.selectedItem.get(), true);
-      this.publisher.pub('fws_show_from_line', this.abnormalNonSensed.showFromLine.get(), true);
+      this.procedureShowFromLine.set(this.abnormalNonSensed.showFromLine.get());
+      this.procedureActiveItem.set(this.abnormalNonSensed.selectedItem.get());
       this.ecamEwdShowFailurePendingIndication.set(false);
     } else if (this.normalChecklists.showChecklistRequested.get()) {
       // ECL always shown
@@ -6229,12 +6240,12 @@ export class FwsCore {
       this.normalChecklists.checklistShown.set(true);
       this.abnormalSensed.abnormalShown.set(false);
 
-      this.publisher.pub('fws_active_item', this.normalChecklists.selectedLine.get(), true);
+      this.procedureActiveItem.set(this.normalChecklists.selectedLine.get());
       const activeDeferredProcedureId = this.normalChecklists.activeDeferredProcedureId.get();
       if (activeDeferredProcedureId) {
-        this.publisher.pub('fws_active_procedure', activeDeferredProcedureId, true);
+        this.activeProcedureId.set(activeDeferredProcedureId);
       }
-      this.publisher.pub('fws_show_from_line', this.normalChecklists.showFromLine.get(), true);
+      this.procedureShowFromLine.set(this.normalChecklists.showFromLine.get());
       this.ecamEwdShowFailurePendingIndication.set(this.abnormalSensed.showAbnormalSensedRequested.get());
     } else if (this.abnormalSensed.showAbnormalSensedRequested.get()) {
       this.abnormalNonSensed.abnProcShown.set(false);
@@ -6243,10 +6254,10 @@ export class FwsCore {
 
       const activeProcedureId = this.abnormalSensed.activeProcedureId.get();
       if (activeProcedureId) {
-        this.publisher.pub('fws_active_item', this.abnormalSensed.selectedItemIndex.get(), true);
-        this.publisher.pub('fws_active_procedure', activeProcedureId, true);
+        this.procedureActiveItem.set(this.abnormalSensed.selectedItemIndex.get());
+        this.activeProcedureId.set(activeProcedureId);
       }
-      this.publisher.pub('fws_show_from_line', this.abnormalSensed.showFromLine.get(), true);
+      this.procedureShowFromLine.set(this.abnormalSensed.showFromLine.get());
       this.ecamEwdShowFailurePendingIndication.set(false);
     } else {
       this.abnormalNonSensed.abnProcShown.set(false);
@@ -6260,17 +6271,18 @@ export class FwsCore {
       !stsInopApprLdgKeys.length &&
       !ewdLimitationsAllPhasesKeys.length &&
       !ewdLimitationsApprLdgKeys.length;
-    const sdStsShown = SimVar.GetSimVarValue('L:A32NX_ECAM_SD_CURRENT_PAGE_INDEX', SimVarValueType.Number) === 14;
-    this.ecamEwdShowStsIndication.set(
-      !this.ecamStatusNormal && !sdStsShown && this.presentedAbnormalProceduresList.get().size === 0,
-    );
+    const sdStsShown = FwsSystemDisplayLogic.sdCurrentPageIndexSimvar.get() === SdPages.Status;
+    const abnormalNotShown = this.presentedAbnormalProceduresList.get().size === 0;
+    this.ecamEwdShowStsIndication.set(!this.ecamStatusNormal && !sdStsShown && abnormalNotShown);
 
     this.approachAutoDisplayQnhSetPulseNode.write(Simplane.getPressureSelectedMode(Aircraft.A320_NEO) !== 'STD');
     this.approachAutoDisplaySlatsExtendedPulseNode.write(!this.flapLeverZero.get());
-    this.publisher.pub('fws_show_abn_non_sensed', this.abnormalNonSensed.abnProcShown.get(), true);
-    this.publisher.pub('fws_show_abn_sensed', this.abnormalSensed.abnormalShown.get(), true);
-    this.publisher.pub('fws_show_normal_checklists', this.normalChecklists.checklistShown.get(), true);
 
+    this.approachAutoDisplayPageCommonCondition =
+      abnormalNotShown &&
+      (flightPhase === 8 || flightPhase === 9) &&
+      (this.adrPressureAltitude.get() ?? 0) < 20_000 &&
+      (this.approachAutoDisplayQnhSetPulseNode.read() || this.approachAutoDisplaySlatsExtendedPulseNode.read());
     // Reset all buffered inputs
     this.toConfigInputBuffer.write(false, true);
     this.clearButtonInputBuffer.write(false, true);

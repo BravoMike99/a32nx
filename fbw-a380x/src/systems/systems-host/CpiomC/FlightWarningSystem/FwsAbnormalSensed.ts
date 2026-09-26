@@ -23,6 +23,7 @@ import {
 import { ChecklistState, FwsEvents } from '../../../shared/src/publishers/FwsPublisher';
 import { FwcAuralWarning, FwsCore, FwsSuppressableItem } from './FwsCore';
 import { NXLogicMemoryNode, NXLogicPulseNode } from '@flybywiresim/fbw-sdk';
+import { FwsSystemDisplayLogic } from './FwsSystemDisplayLogic';
 
 export interface EwdAbnormalItem extends FwsSuppressableItem {
   flightPhaseInhib: number[];
@@ -247,7 +248,7 @@ export class FwsAbnormalSensed {
     if (numFailures === 1) {
       if (!this.fws.ecamStatusNormal) {
         // Call STS page on SD
-        SimVar.SetSimVarValue('L:A32NX_ECAM_SD_CURRENT_PAGE_INDEX', SimVarValueType.Enum, SdPages.Status);
+        FwsSystemDisplayLogic.sdCurrentPageIndexSimvar.set(SdPages.Status);
       }
 
       // If there are deferred procedures, open ECL menu
@@ -273,19 +274,13 @@ export class FwsAbnormalSensed {
   }
 
   private checkIfStsAutoDisplay() {
-    const flightPhase = this.fws.flightPhase.get();
     const autoCallStatus = this.statusAutoDisplayMemoryNode.write(
-      this.fws.presentedAbnormalProceduresList.get().size === 0 &&
-        (flightPhase === 8 || flightPhase === 9) &&
-        (this.fws.adrPressureAltitude.get() ?? 0) < 20_000 &&
-        !this.fws.ecamStatusNormal &&
-        (this.fws.approachAutoDisplayQnhSetPulseNode.read() ||
-          this.fws.approachAutoDisplaySlatsExtendedPulseNode.read()),
+      this.fws.approachAutoDisplayPageCommonCondition && !this.fws.ecamStatusNormal,
       this.fws.flightPhase8Or10PulseNode.read(),
     );
     if (this.statusAutoDisplayPulse.write(autoCallStatus)) {
       // Call STS page on SD
-      SimVar.SetSimVarValue('L:A32NX_ECAM_SD_CURRENT_PAGE_INDEX', SimVarValueType.Enum, SdPages.Status);
+      FwsSystemDisplayLogic.sdCurrentPageIndexSimvar.set(SdPages.Status);
     }
   }
 
