@@ -598,7 +598,7 @@ export class FwsMemos {
       simVarIsActive: this.fws.toMemo.map((t) => !!t),
       whichCodeToReturn: () => [
         0,
-        this.fws.toLdgMemoSignsOn ? (this.fws.seatBeltsOn.get() ? 2 : 1) : this.fws.signsOnOrAuto.get() ? 4 : 3,
+        !this.fws.toLdgMemoSignsOn ? (this.fws.seatBeltsOn.get() ? 2 : 1) : this.fws.signsOnOrAuto.get() ? 4 : 3,
         this.fws.spoilersArmed ? 6 : 5,
         this.fws.flapsNotToMemo ? 7 : 8,
         this.fws.autoBrakeRto ? 9 : 10,
@@ -634,7 +634,7 @@ export class FwsMemos {
       simVarIsActive: this.fws.ldgMemo.map((t) => !!t),
       whichCodeToReturn: () => [
         0,
-        this.fws.toLdgMemoSignsOn ? (this.fws.seatBeltsOn.get() ? 2 : 1) : this.fws.signsOnOrAuto.get() ? 4 : 3,
+        !this.fws.toLdgMemoSignsOn ? (this.fws.seatBeltsOn.get() ? 2 : 1) : this.fws.signsOnOrAuto.get() ? 4 : 3,
         this.fws.isAllGearDownlocked ? 6 : 5,
         this.fws.spoilersArmed ? 8 : 7,
         this.fws.flapsLeverInLandingConfiguration ? 10 : 9,
