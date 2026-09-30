@@ -4681,7 +4681,7 @@ export class FwsCore {
     this.compMesgCount.set(SimVar.GetSimVarValue('L:A32NX_COMPANY_MSG_COUNT', 'number'));
     this.fmsSwitchingKnob.set(SimVar.GetSimVarValue('L:A32NX_FMS_SWITCHING_KNOB', 'enum'));
     const seatBeltSwitchPosition = this.seatBeltSignRegisteredSimvar.get();
-    this.seatBeltsOn.set(seatBeltSwitchPosition === 0);
+    this.seatBeltsOn.set(seatBeltSwitchPosition === 1);
     this.ndXfrKnob.set(SimVar.GetSimVarValue('L:A32NX_ECAM_ND_XFR_SWITCHING_KNOB', 'enum'));
     const noMobileSwitchPosition = this.noMobileSwitchRegisteredSimvar.get();
     this.noMobileSwitchOn.set(noMobileSwitchPosition === 0);

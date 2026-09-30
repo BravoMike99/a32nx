@@ -419,7 +419,7 @@ export class FwsMemos {
       simVarIsActive: this.fws.noMobileSwitchOn,
       whichCodeToReturn: () => [0],
       codesToReturn: ['335000003'],
-      memoInhibit: () => this.fws.toOrLdgMemoActive.get() && !this.fws.toLdgMemoSignsOn,
+      memoInhibit: () => this.fws.toOrLdgMemoActive.get() && this.fws.toLdgMemoSignsOn,
     },
     '340000001': {
       // TRUE NORTH REF
@@ -601,8 +601,8 @@ export class FwsMemos {
         !this.fws.toLdgMemoSignsOn ? (this.fws.seatBeltsOn.get() ? 2 : 1) : this.fws.signsOnOrAuto.get() ? 4 : 3,
         this.fws.spoilersArmed ? 6 : 5,
         this.fws.flapsNotToMemo ? 7 : 8,
-        this.fws.autoBrakeRto ? 9 : 10,
-        this.fws.toConfigNormal.get() ? 11 : 12,
+        this.fws.autoBrakeRto ? 10 : 9,
+        this.fws.toConfigNormal.get() ? 12 : 11,
       ],
       codesToReturn: [
         '000001001',

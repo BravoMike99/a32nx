@@ -166,7 +166,7 @@ export const DEFAULT_ECAM_NORMAL_PROCEDURES: NormalProcedure[] = [
     type: NormalProcedureType.LINE_UP,
   },
   {
-    title: '<<DEPARTURE CHANGE>>',
+    title: '<< DEPARTURE CHANGE >>',
     items: [
       {
         name: 'RWY & SID',

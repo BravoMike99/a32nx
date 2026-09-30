@@ -564,30 +564,30 @@ export class ProcedureLinesGenerator {
           originalItemIndex: SPECIAL_INDEX_CLEAR,
         });
       } else if (this.type === ProcedureType.Normal) {
+        const isDepartureChange = this.procedureId === DEPARTURE_CHANGE_NORMAL_CHECKLIST_ID_TEXT;
+        // Departure change has special C/L handling.
         lineData.push({
           activeProcedure: procedureIsActive,
           sensed: false,
           checked: this.checklistState.procedureCompleted ?? false,
-          text: `C/L COMPLETE${this.procedureId === DEPARTURE_CHANGE_NORMAL_CHECKLIST_ID_TEXT ? ' AND RESET' : ''}`.padStart(
-            39,
-            '\xa0',
-          ),
+          text: `C/L COMPLETE${isDepartureChange ? ' AND RESET' : ''}`.padStart(39, '\xa0'),
           style: ChecklistLineStyle.ChecklistItem,
           firstLine: false,
           lastLine: false,
           originalItemIndex: SPECIAL_INDEX_NORMAL_CL_COMPLETE,
         });
-
-        lineData.push({
-          activeProcedure: procedureIsActive,
-          sensed: false,
-          checked: false,
-          text: `${'\xa0'.repeat(34)}RESET`,
-          style: ChecklistLineStyle.ChecklistItem,
-          firstLine: false,
-          lastLine: true,
-          originalItemIndex: SPECIAL_INDEX_NORMAL_RESET,
-        });
+        if (!isDepartureChange) {
+          lineData.push({
+            activeProcedure: procedureIsActive,
+            sensed: false,
+            checked: false,
+            text: `${'\xa0'.repeat(34)}RESET`,
+            style: ChecklistLineStyle.ChecklistItem,
+            firstLine: false,
+            lastLine: true,
+            originalItemIndex: SPECIAL_INDEX_NORMAL_RESET,
+          });
+        }
       } else if (isDeferred) {
         if (this.checklistState.procedureCompleted) {
           lineData.push({
